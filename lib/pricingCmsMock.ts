@@ -417,6 +417,112 @@ export const AIRPORT_PRICE_SEED: AirportPriceRow[] = [
   },
 ];
 
+export interface CustomizedPriceRow {
+  id: string;
+  vehicleType: string;
+  vehicleName: string;
+  office: PricingOffice;
+  owner: string;
+  available: boolean;
+  minDurationHrs: number | null;
+  tieredPricing: boolean;
+  unitPrice: number | null;
+  unit1to4: number | null;
+  unit4to7: number | null;
+  unit7to10: number | null;
+  fixedRateAvailable: boolean;
+  fixedRateFromHrs: number | null;
+  fixedRateToHrs: number | null;
+  fixedRate: number | null;
+  overtimeCharge: number | null;
+  dispatchFee: number | null;
+  dispatchFreeKm: number | null;
+  returnFee: number | null;
+  returnFreeKm: number | null;
+  longDistanceMaxKm: number | null;
+  longDistanceOverchargeRate: number | null;
+}
+
+/** Per-vehicle-type charter pricing defaults, keyed off the same Vehicle
+ * Lineup identity (type/name/office/owner) that Sightseeing Price uses —
+ * Customized Price never invents its own vehicles. */
+const CUSTOMIZED_PRICE_BASE: Record<
+  string,
+  {
+    minDurationHrs: number;
+    unit1to4: number;
+    unit4to7: number;
+    unit7to10: number;
+    fixedRate: number;
+    overtimeCharge: number;
+    dispatchFee: number;
+    dispatchFreeKm: number;
+  }
+> = {
+  "Commuter Van": {
+    minDurationHrs: 4,
+    unit1to4: 12000,
+    unit4to7: 10500,
+    unit7to10: 9500,
+    fixedRate: 66000,
+    overtimeCharge: 4500,
+    dispatchFee: 2000,
+    dispatchFreeKm: 20,
+  },
+  "Premium Minivan": {
+    minDurationHrs: 3,
+    unit1to4: 14000,
+    unit4to7: 12500,
+    unit7to10: 11000,
+    fixedRate: 72000,
+    overtimeCharge: 5200,
+    dispatchFee: 2500,
+    dispatchFreeKm: 25,
+  },
+  "Crossover EV": {
+    minDurationHrs: 2,
+    unit1to4: 11000,
+    unit4to7: 9800,
+    unit7to10: 8800,
+    fixedRate: 60000,
+    overtimeCharge: 4000,
+    dispatchFee: 1500,
+    dispatchFreeKm: 15,
+  },
+};
+
+export const CUSTOMIZED_PRICE_SEED: CustomizedPriceRow[] = SIGHTSEEING_PRICE_SEED.map(
+  (r) => {
+    const base =
+      CUSTOMIZED_PRICE_BASE[r.vehicleType] ?? CUSTOMIZED_PRICE_BASE["Commuter Van"];
+    return {
+      id: r.id.replace("sp-", "cp-"),
+      vehicleType: r.vehicleType,
+      vehicleName: r.vehicleName,
+      office: r.office,
+      owner: r.owner,
+      available: r.available,
+      minDurationHrs: base.minDurationHrs,
+      tieredPricing: true,
+      unitPrice: null,
+      unit1to4: base.unit1to4,
+      unit4to7: base.unit4to7,
+      unit7to10: base.unit7to10,
+      fixedRateAvailable: true,
+      fixedRateFromHrs: 4,
+      fixedRateToHrs: 10,
+      fixedRate: base.fixedRate,
+      overtimeCharge: base.overtimeCharge,
+      dispatchFee: base.dispatchFee,
+      dispatchFreeKm: base.dispatchFreeKm,
+      returnFee: base.dispatchFee,
+      returnFreeKm: base.dispatchFreeKm,
+      longDistanceMaxKm: null,
+      longDistanceOverchargeRate: null,
+    };
+  },
+);
+
 export const PRICING_CMS_TABS = [
   "Offices",
   "Airports",
