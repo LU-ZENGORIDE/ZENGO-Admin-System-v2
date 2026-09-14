@@ -422,7 +422,7 @@ export const PRICING_CMS_TABS = [
   "Airports",
   "Vehicle Lineup",
   "Vehicle Detail",
-  "Sightseeing Price",
+  "Tour Charters",
   "Customized Price",
   "Airport Price",
   "Value-Add Services",

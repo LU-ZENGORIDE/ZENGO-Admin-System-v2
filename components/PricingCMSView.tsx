@@ -74,13 +74,15 @@ function OfficeFilterChips({
 }
 
 export default function PricingCMSView() {
-  const [activeTab, setActiveTab] = useState<PricingCmsTab>("Sightseeing Price");
+  const [activeTab, setActiveTab] = useState<PricingCmsTab>("Tour Charters");
   const [rows, setRows] = useState<SightseeingPriceRow[]>(SIGHTSEEING_PRICE_SEED);
   const [airportRows, setAirportRows] =
     useState<AirportPriceRow[]>(AIRPORT_PRICE_SEED);
   const [officeFilter, setOfficeFilter] = useState<PricingOffice | "All">("All");
   const [editingAirportRow, setEditingAirportRow] =
     useState<AirportPriceRow | null>(null);
+  const [editingSightseeingRow, setEditingSightseeingRow] =
+    useState<SightseeingPriceRow | null>(null);
 
   const sightseeingCounts = useMemo(() => officeCounts(rows), [rows]);
   const airportCounts = useMemo(() => officeCounts(airportRows), [airportRows]);
@@ -148,7 +150,7 @@ export default function PricingCMSView() {
         ))}
       </div>
 
-      {activeTab === "Sightseeing Price" ? (
+      {activeTab === "Tour Charters" ? (
         <>
           <OfficeFilterChips
             officeFilter={officeFilter}
@@ -207,6 +209,7 @@ export default function PricingCMSView() {
                       <button
                         type="button"
                         title="Edit row"
+                        onClick={() => setEditingSightseeingRow(row)}
                         className="rounded p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600"
                       >
                         <Pencil className="h-4 w-4" />
@@ -217,6 +220,19 @@ export default function PricingCMSView() {
               </tbody>
             </table>
           </div>
+
+          {editingSightseeingRow && (
+            <SightseeingPriceModal
+              row={editingSightseeingRow}
+              onClose={() => setEditingSightseeingRow(null)}
+              onSave={(updated) => {
+                setRows((prev) =>
+                  prev.map((r) => (r.id === updated.id ? updated : r)),
+                );
+                setEditingSightseeingRow(null);
+              }}
+            />
+          )}
         </>
       ) : activeTab === "Airport Price" ? (
         <>
@@ -536,6 +552,160 @@ function AirportPriceModal({
               </div>
             </div>
           )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(draft)}
+            className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SightseeingPriceModal({
+  row,
+  onClose,
+  onSave,
+}: {
+  row: SightseeingPriceRow;
+  onClose: () => void;
+  onSave: (row: SightseeingPriceRow) => void;
+}) {
+  const [draft, setDraft] = useState<SightseeingPriceRow>(row);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-base font-bold text-gray-900">Edit Vehicle Pricing</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Vehicle Type
+              </p>
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                {draft.vehicleType}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Vehicle Name
+              </p>
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                {draft.vehicleName}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Office
+              </p>
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                {draft.office}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Owner
+            </p>
+            <div className="flex gap-1.5">
+              {(["Self", "Partner"] as const).map((owner) => (
+                <button
+                  key={owner}
+                  type="button"
+                  onClick={() => setDraft((prev) => ({ ...prev, owner }))}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                    draft.owner === owner
+                      ? "border-[#121621] bg-[#121621] text-white"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {owner}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Available
+            </p>
+            <AvailabilityToggle
+              available={draft.available}
+              onToggle={() =>
+                setDraft((prev) => ({ ...prev, available: !prev.available }))
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Half Day ¥
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={draft.halfDayPrice}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    halfDayPrice: parseInt(e.target.value, 10) || 0,
+                  }))
+                }
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm tabular-nums outline-none focus:border-gray-400"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Full Day ¥
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={draft.fullDayPrice}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    fullDayPrice: parseInt(e.target.value, 10) || 0,
+                  }))
+                }
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm tabular-nums outline-none focus:border-gray-400"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
