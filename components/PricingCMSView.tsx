@@ -362,7 +362,6 @@ export default function PricingCMSView() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
                   {[
-                    "Vehicle Type",
                     "Vehicle Name",
                     "Office",
                     "Owner",
@@ -394,9 +393,8 @@ export default function PricingCMSView() {
                     className="border-b border-gray-50 transition hover:bg-gray-50/60"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      {row.vehicleType}
+                      {row.vehicleName}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{row.vehicleName}</td>
                     <td className="px-4 py-3 text-gray-700">{row.office}</td>
                     <td className="px-4 py-3 text-gray-600">{row.owner}</td>
                     <td className="px-4 py-3">
