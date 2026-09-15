@@ -367,7 +367,6 @@ export default function PricingCMSView() {
                     "Owner",
                     "Availability",
                     "Min. Duration",
-                    "Fixed Rate Availability",
                     "Unit Price (1-4h)",
                     "Unit Price (4-7h)",
                     "Unit Price (7-10h)",
@@ -413,20 +412,6 @@ export default function PricingCMSView() {
                     </td>
                     <td className="px-4 py-3 tabular-nums text-gray-700">
                       {formatHrs(row.minDurationHrs)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <AvailabilityToggle
-                        available={row.fixedRateAvailable}
-                        onToggle={() =>
-                          setCustomRows((prev) =>
-                            prev.map((r) =>
-                              r.id === row.id
-                                ? { ...r, fixedRateAvailable: !r.fixedRateAvailable }
-                                : r,
-                            ),
-                          )
-                        }
-                      />
                     </td>
                     <td className="px-4 py-3 tabular-nums text-gray-900">
                       {formatPrice(
