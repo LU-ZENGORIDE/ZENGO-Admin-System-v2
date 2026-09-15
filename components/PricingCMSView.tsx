@@ -385,14 +385,15 @@ export default function PricingCMSView() {
                 {filteredCustom.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-gray-50 transition hover:bg-gray-50/60"
+                    onClick={() => setEditingCustomRow(row)}
+                    className="cursor-pointer border-b border-gray-50 transition hover:bg-gray-50/60"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {row.vehicleName}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{row.office}</td>
                     <td className="px-4 py-3 text-gray-600">{row.owner}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <AvailabilityToggle
                         available={row.available}
                         onToggle={() =>
