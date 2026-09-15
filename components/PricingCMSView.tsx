@@ -1056,15 +1056,18 @@ function CustomizedPriceModal({
             </div>
           ) : (
             <div>
-              <label className={CP_LABEL}>Unit Price ¥</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={draft.unitPrice ?? ""}
-                onChange={(e) => patch({ unitPrice: numOrNull(e.target.value) })}
-                placeholder="0"
-                className={CP_NUM_FIELD}
-              />
+              <label className={CP_LABEL}>Unit Price/Hour</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={draft.unitPrice ?? ""}
+                  onChange={(e) => patch({ unitPrice: numOrNull(e.target.value) })}
+                  placeholder="0"
+                  className={CP_NUM_FIELD}
+                />
+                <span className="text-[11px] font-semibold text-gray-400">Hour</span>
+              </div>
             </div>
           )}
 
