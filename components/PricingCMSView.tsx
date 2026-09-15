@@ -266,26 +266,36 @@ export default function PricingCMSView() {
             counts={airportCounts}
           />
 
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+            <table className="w-full min-w-[1200px] text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  {[
-                    "Vehicle Type",
-                    "Vehicle Name",
-                    "Office",
-                    "Airports",
-                    "Owner",
-                    "Available",
-                    "Action",
-                  ].map((col) => (
-                    <th
-                      key={col}
-                      className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500"
-                    >
-                      {col}
-                    </th>
-                  ))}
+                  <th className="w-[150px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Vehicle Type
+                  </th>
+                  <th className="w-[210px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Vehicle Name
+                  </th>
+                  <th className="w-[90px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Office
+                  </th>
+                  <th className="min-w-[520px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2.5">
+                      <span className="truncate">Airports</span>
+                      <span className="truncate">Range Name</span>
+                      <span className="truncate">Fixed Fee</span>
+                      <span className="truncate">Fix Rate Range</span>
+                    </div>
+                  </th>
+                  <th className="w-[120px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Owner
+                  </th>
+                  <th className="w-[120px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Available
+                  </th>
+                  <th className="w-[80px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -294,35 +304,54 @@ export default function PricingCMSView() {
                     key={row.id}
                     className="border-b border-gray-50 transition hover:bg-gray-50/60"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                    <td className="px-4 py-3 align-top font-medium text-gray-900">
                       {row.vehicleType}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{row.vehicleName}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.office}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top text-gray-700">{row.vehicleName}</td>
+                    <td className="px-4 py-3 align-top text-gray-700">{row.office}</td>
+                    <td className="px-4 py-3 align-top">
                       {row.legs.length === 0 ? (
                         <span className="text-gray-300">—</span>
                       ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {row.legs.map((leg) => (
-                            <span
-                              key={leg.airport}
-                              className="inline-flex whitespace-nowrap rounded-md border border-gray-200 bg-gray-50/80 px-2 py-0.5 text-xs font-medium text-gray-600"
-                            >
-                              {leg.airport}
-                            </span>
-                          ))}
+                        <div className="flex flex-col gap-1.5">
+                          {row.legs.flatMap((leg) =>
+                            legZones(leg).map((z, i) => (
+                              <div
+                                key={leg.airport + "::" + z.id}
+                                className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2.5"
+                              >
+                                <span
+                                  className={
+                                    i === 0
+                                      ? "inline-flex w-fit max-w-full truncate whitespace-nowrap rounded-md border border-gray-200 bg-gray-50/80 px-2 py-0.5 text-xs font-medium text-gray-600"
+                                      : "hidden"
+                                  }
+                                >
+                                  {i === 0 ? leg.airport : ""}
+                                </span>
+                                <span className="truncate text-xs font-medium text-gray-600">
+                                  {z.name || "Unnamed"}
+                                </span>
+                                <span className="truncate text-xs font-semibold tabular-nums text-gray-900">
+                                  {formatPrice(z.fixedFee || 0)}
+                                </span>
+                                <span className="truncate text-xs tabular-nums text-gray-500">
+                                  {z.radiusKm ? `${z.radiusKm} km` : "—"}
+                                </span>
+                              </div>
+                            )),
+                          )}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{row.owner}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top text-gray-600">{row.owner}</td>
+                    <td className="px-4 py-3 align-top">
                       <AvailabilityToggle
                         available={row.available}
                         onToggle={() => toggleAirportAvailable(row.id)}
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top">
                       <button
                         type="button"
                         title="Edit row"
