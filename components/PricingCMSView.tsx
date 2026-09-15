@@ -20,10 +20,6 @@ import {
 } from "@/lib/pricingCmsMock";
 import { formatPrice } from "@/lib/tourUtils";
 
-function formatHrs(v: number | null): string {
-  return v === null ? "—" : `${v}h`;
-}
-
 function formatFeePerKm(fee: number | null, km: number | null): string {
   if (fee === null || km === null) return "—";
   return `${formatPrice(fee)} / ${km}km`;
@@ -366,7 +362,7 @@ export default function PricingCMSView() {
                     "Office",
                     "Owner",
                     "Availability",
-                    "Min. Duration",
+                    "Min. Fare",
                     "Unit Price (1-4h)",
                     "Unit Price (4-7h)",
                     "Unit Price (7-10h)",
@@ -411,7 +407,7 @@ export default function PricingCMSView() {
                       />
                     </td>
                     <td className="px-4 py-3 tabular-nums text-gray-700">
-                      {formatHrs(row.minDurationHrs)}
+                      {formatPrice(row.minDurationHrs)}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-gray-900">
                       {formatPrice(
@@ -901,9 +897,6 @@ function CustomizedPriceModal({
   const [draft, setDraft] = useState<CustomizedPriceRow>(row);
   const patch = (p: Partial<CustomizedPriceRow>) =>
     setDraft((prev) => ({ ...prev, ...p }));
-  const minDurBad =
-    draft.minDurationHrs !== null &&
-    (draft.minDurationHrs < 1 || draft.minDurationHrs > 10);
 
   return (
     <div
@@ -990,21 +983,14 @@ function CustomizedPriceModal({
           </div>
 
           <div>
-            <label className={CP_LABEL}>Min. Duration (1–10h)</label>
+            <label className={CP_LABEL}>Min. Fare</label>
             <input
               type="text"
               inputMode="numeric"
               value={draft.minDurationHrs ?? ""}
               onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })}
-              onBlur={() => {
-                if (draft.minDurationHrs !== null) {
-                  patch({ minDurationHrs: Math.min(10, Math.max(1, draft.minDurationHrs)) });
-                }
-              }}
-              placeholder="1–10"
-              className={`${CP_NUM_FIELD} max-w-[110px] ${
-                minDurBad ? "border-red-300 bg-red-50" : ""
-              }`}
+              placeholder="0"
+              className={`${CP_NUM_FIELD} max-w-[110px]`}
             />
           </div>
 
@@ -1196,13 +1182,8 @@ function CustomizedPriceModal({
           </button>
           <button
             type="button"
-            disabled={minDurBad}
             onClick={() => onSave(draft)}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${
-              minDurBad
-                ? "cursor-not-allowed bg-[#FACC15]/45 text-[#121621]/60"
-                : "bg-[#FACC15] text-[#121621] hover:bg-[#eab308]"
-            }`}
+            className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]"
           >
             OK
           </button>
