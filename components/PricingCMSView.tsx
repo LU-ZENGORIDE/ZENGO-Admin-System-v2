@@ -1,11 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, RefreshCw, X } from "lucide-react";
+import { MapPin, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import {
   AIRPORT_DISTANCE_CAP_KM,
+  AIRPORT_MAP_LOCATIONS,
   AIRPORT_PRICE_SEED,
   CUSTOMIZED_PRICE_SEED,
+  legZones,
+  MAP_LOCATION_SUGGESTIONS,
+  nextZoneId,
   OFFICE_AIRPORTS,
   officeCounts,
   PRICING_CMS_TABS,
@@ -13,12 +17,14 @@ import {
   SIGHTSEEING_PRICE_SEED,
   type AirportPriceLeg,
   type AirportPriceRow,
+  type AirportPriceZone,
   type CustomizedPriceRow,
+  type MapLocationSuggestion,
   type PricingCmsTab,
   type PricingOffice,
   type SightseeingPriceRow,
 } from "@/lib/pricingCmsMock";
-import { formatPrice } from "@/lib/tourUtils";
+import { airportDisplayName, formatPrice } from "@/lib/tourUtils";
 
 function formatFeePerKm(fee: number | null, km: number | null): string {
   if (fee === null || km === null) return "—";
@@ -496,6 +502,16 @@ function AirportPriceModal({
   const [draft, setDraft] = useState<AirportPriceRow>(row);
   const availableAirports = OFFICE_AIRPORTS[row.office] ?? [];
 
+  const [rangePicker, setRangePicker] = useState<{
+    airport: string;
+    zoneId: string;
+  } | null>(null);
+  const [rpName, setRpName] = useState("");
+  const [rpQuery, setRpQuery] = useState("");
+  const [rpSelected, setRpSelected] = useState<MapLocationSuggestion | null>(null);
+  const [rpRadius, setRpRadius] = useState("");
+  const [rpShowSuggestions, setRpShowSuggestions] = useState(false);
+
   const toggleAirport = (airport: string) => {
     setDraft((prev) => {
       const exists = prev.legs.some((l) => l.airport === airport);
@@ -512,13 +528,31 @@ function AirportPriceModal({
     });
   };
 
-  const updateLeg = (airport: string, patch: Partial<AirportPriceLeg>) => {
+  const updateLegZones = (airport: string, zones: AirportPriceZone[]) => {
     setDraft((prev) => ({
       ...prev,
-      legs: prev.legs.map((l) =>
-        l.airport === airport ? { ...l, ...patch } : l,
-      ),
+      legs: prev.legs.map((l) => (l.airport === airport ? { ...l, zones } : l)),
     }));
+  };
+
+  const openRangeForZone = (leg: AirportPriceLeg, z: AirportPriceZone) => {
+    const center = z.center || AIRPORT_MAP_LOCATIONS[leg.airport] || null;
+    setRangePicker({ airport: leg.airport, zoneId: z.id });
+    setRpName(z.name || "");
+    setRpQuery(center ? center.title : "");
+    setRpSelected(center);
+    setRpRadius(z.radiusKm ? String(z.radiusKm) : "");
+    setRpShowSuggestions(false);
+  };
+
+  const openAddZone = (leg: AirportPriceLeg) => {
+    const id = nextZoneId(legZones(leg), leg.airport);
+    setRangePicker({ airport: leg.airport, zoneId: id });
+    setRpName("New range");
+    setRpQuery("");
+    setRpSelected(AIRPORT_MAP_LOCATIONS[leg.airport] || null);
+    setRpRadius("");
+    setRpShowSuggestions(false);
   };
 
   return (
@@ -636,66 +670,76 @@ function AirportPriceModal({
                 Pricing Map
               </p>
               <div className="flex flex-col gap-3">
-                {draft.legs.map((leg) => (
-                  <div
-                    key={leg.airport}
-                    className="rounded-lg border border-gray-200 p-3"
-                  >
-                    <p className="mb-2 text-sm font-semibold text-gray-800">
-                      {leg.airport}
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="mb-1 block text-[11px] text-gray-500">
-                          Fixed Fee ¥
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={leg.fixedFee}
-                          onChange={(e) =>
-                            updateLeg(leg.airport, {
-                              fixedFee: parseInt(e.target.value, 10) || 0,
-                            })
-                          }
-                          className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400"
-                        />
+                {draft.legs.map((leg) => {
+                  const zones = legZones(leg);
+                  return (
+                    <div
+                      key={leg.airport}
+                      className="rounded-lg border border-gray-200 p-3"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {leg.airport}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => openAddZone(leg)}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-600 transition hover:border-gray-900 hover:text-gray-900"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Add range
+                        </button>
                       </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] text-gray-500">
-                          Distance Cap km
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={leg.distanceCapKm}
-                          onChange={(e) =>
-                            updateLeg(leg.airport, {
-                              distanceCapKm: parseInt(e.target.value, 10) || 0,
-                            })
-                          }
-                          className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400"
-                        />
+                      <div className="mb-1 grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.1fr)] gap-2">
+                        <label className="text-[11px] text-gray-500">Fixed Range Name</label>
+                        <label className="text-[11px] text-gray-500">Fixed Fee ¥</label>
+                        <label className="text-[11px] text-gray-500">Fix Rate Range</label>
                       </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] text-gray-500">
-                          Excess ¥/km
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={leg.excessRatePerKm}
-                          onChange={(e) =>
-                            updateLeg(leg.airport, {
-                              excessRatePerKm: parseInt(e.target.value, 10) || 0,
-                            })
-                          }
-                          className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400"
-                        />
+                      <div className="flex flex-col gap-2">
+                        {zones.map((z) => (
+                          <div
+                            key={z.id}
+                            className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.1fr)] items-center gap-2"
+                          >
+                            <button
+                              type="button"
+                              title="Rename this range"
+                              onClick={() => openRangeForZone(leg, z)}
+                              className="truncate rounded-lg border border-dashed border-gray-200 bg-gray-50 px-2 py-1.5 text-left text-sm font-medium text-gray-900 transition hover:border-gray-400 hover:bg-gray-100"
+                            >
+                              {z.name}
+                            </button>
+                            <input
+                              type="number"
+                              min="0"
+                              value={z.fixedFee}
+                              onChange={(e) =>
+                                updateLegZones(
+                                  leg.airport,
+                                  zones.map((y) =>
+                                    y.id === z.id
+                                      ? { ...y, fixedFee: parseInt(e.target.value, 10) || 0 }
+                                      : y,
+                                  ),
+                                )
+                              }
+                              className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400"
+                            />
+                            <button
+                              type="button"
+                              title="Set the fixed-rate radius on a map"
+                              onClick={() => openRangeForZone(leg, z)}
+                              className="flex w-full items-center justify-between gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm tabular-nums text-gray-900 transition hover:border-gray-400 hover:bg-gray-50"
+                            >
+                              <span>{z.radiusKm ? `${z.radiusKm} km` : "Set range"}</span>
+                              <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -715,6 +759,346 @@ function AirportPriceModal({
             className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]"
           >
             OK
+          </button>
+        </div>
+      </div>
+
+      {rangePicker && (
+        <RangePickerModal
+          airport={rangePicker.airport}
+          name={rpName}
+          onName={setRpName}
+          query={rpQuery}
+          onQuery={(v) => {
+            setRpQuery(v);
+            setRpShowSuggestions(true);
+            setRpSelected(null);
+          }}
+          onFocusQuery={() => setRpShowSuggestions(true)}
+          showSuggestions={rpShowSuggestions}
+          onPick={(loc) => {
+            setRpQuery(loc.title);
+            setRpSelected(loc);
+            setRpShowSuggestions(false);
+          }}
+          selected={rpSelected}
+          radius={rpRadius}
+          onRadius={(v) => setRpRadius(v.replace(/[^0-9.]/g, ""))}
+          canDelete={(() => {
+            const leg = draft.legs.find((l) => l.airport === rangePicker.airport);
+            if (!leg) return false;
+            const zs = legZones(leg);
+            return zs.length > 1 && zs.some((z) => z.id === rangePicker.zoneId);
+          })()}
+          onDelete={() => {
+            const { airport, zoneId } = rangePicker;
+            const leg = draft.legs.find((l) => l.airport === airport);
+            if (leg) {
+              updateLegZones(
+                airport,
+                legZones(leg).filter((z) => z.id !== zoneId),
+              );
+            }
+            setRangePicker(null);
+          }}
+          onClose={() => setRangePicker(null)}
+          onSave={(radius) => {
+            const { airport, zoneId } = rangePicker;
+            const leg = draft.legs.find((l) => l.airport === airport);
+            if (leg) {
+              const zones = legZones(leg);
+              const name = (rpName || "").trim() || "Unnamed";
+              const next = zones.some((z) => z.id === zoneId)
+                ? zones.map((z) =>
+                    z.id === zoneId ? { ...z, name, radiusKm: radius, center: rpSelected } : z,
+                  )
+                : zones.concat([
+                    { id: zoneId, name, radiusKm: radius, center: rpSelected, fixedFee: 0 },
+                  ]);
+              updateLegZones(airport, next);
+            }
+            setRangePicker(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+const MAP_HALF_SPAN_KM = 100;
+
+function RangePickerModal({
+  airport,
+  name,
+  onName,
+  query,
+  onQuery,
+  onFocusQuery,
+  showSuggestions,
+  onPick,
+  selected,
+  radius,
+  onRadius,
+  canDelete,
+  onDelete,
+  onClose,
+  onSave,
+}: {
+  airport: string;
+  name: string;
+  onName: (v: string) => void;
+  query: string;
+  onQuery: (v: string) => void;
+  onFocusQuery: () => void;
+  showSuggestions: boolean;
+  onPick: (loc: MapLocationSuggestion) => void;
+  selected: MapLocationSuggestion | null;
+  radius: string;
+  onRadius: (v: string) => void;
+  canDelete: boolean;
+  onDelete: () => void;
+  onClose: () => void;
+  onSave: (radius: number) => void;
+}) {
+  const q = query.trim().toLowerCase();
+  const suggestions = q
+    ? MAP_LOCATION_SUGGESTIONS.filter(
+        (l) => l.title.toLowerCase().includes(q) || l.address.toLowerCase().includes(q),
+      )
+    : MAP_LOCATION_SUGGESTIONS.slice(0, 5);
+  const radiusNum = parseFloat(radius);
+  const validRadius = !isNaN(radiusNum) && radiusNum > 0;
+  const shown = validRadius ? Math.min(radiusNum, MAP_HALF_SPAN_KM) : 0;
+  const circleR = (shown / MAP_HALF_SPAN_KM) * 42;
+  const radiusLineX = 50 + circleR;
+  const clamped = validRadius && radiusNum > MAP_HALF_SPAN_KM;
+  const saveDisabled = !(validRadius && selected);
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[544px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-bold text-gray-900">Fix Rate Range</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              {airportDisplayName(airport)} · applies to this vehicle only
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="mb-3">
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+              Fixed Range Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => onName(e.target.value)}
+              placeholder="e.g. Inner Tokyo"
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-gray-400"
+            />
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_132px] items-start gap-3">
+            <div className="relative">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                Center address
+              </label>
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <MapPin className="h-4 w-4 shrink-0 text-[#FACC15]" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => onQuery(e.target.value)}
+                  onFocus={onFocusQuery}
+                  placeholder="Search for an address..."
+                  className="min-w-0 flex-1 border-0 bg-transparent text-sm text-gray-900 outline-none"
+                />
+                <Search className="h-4 w-4 shrink-0 text-gray-400" />
+              </div>
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 top-full z-10 mt-1.5 overflow-hidden rounded-lg border border-gray-200 bg-white p-0 shadow-lg">
+                  {suggestions.map((loc) => (
+                    <li key={loc.title}>
+                      <button
+                        type="button"
+                        onClick={() => onPick(loc)}
+                        className="flex w-full gap-2.5 border-0 bg-transparent px-3 py-2.5 text-left transition hover:bg-gray-50"
+                      >
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-medium text-gray-900">
+                            {loc.title}
+                          </p>
+                          <p className="truncate text-[11px] text-gray-500">{loc.address}</p>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                Radius
+              </label>
+              <div className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={radius}
+                  onChange={(e) => onRadius(e.target.value)}
+                  placeholder="0"
+                  className="min-w-0 flex-1 border-0 bg-transparent text-sm font-bold tabular-nums text-gray-900 outline-none"
+                />
+                <span className="shrink-0 text-[11px] font-semibold text-gray-400">km</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-3.5 overflow-hidden rounded-xl border border-gray-200">
+            <div className="h-[264px] bg-[#e8eaed]">
+              <svg
+                viewBox="0 0 400 264"
+                preserveAspectRatio="xMidYMid slice"
+                className="block h-full w-full"
+              >
+                <rect width="400" height="264" fill="#eaeced" />
+                <path
+                  d="M0 214 C60 200 110 226 168 216 C226 206 286 232 400 220 L400 264 L0 264 Z"
+                  fill="#aadaff"
+                />
+                <path
+                  d="M296 0 C312 26 300 52 316 74 C332 96 326 120 340 136 L400 136 L400 0 Z"
+                  fill="#aadaff"
+                />
+                <rect x="34" y="36" width="76" height="52" rx="2" fill="#c9e6c9" />
+                <rect x="246" y="164" width="62" height="38" rx="2" fill="#c9e6c9" />
+                <rect x="150" y="20" width="44" height="30" rx="2" fill="#dfe3e6" />
+                <g stroke="#ffffff" fill="none" strokeLinecap="round">
+                  <path d="M0 108 H400" strokeWidth="11" />
+                  <path d="M0 168 H400" strokeWidth="7" />
+                  <path d="M0 62 H400" strokeWidth="5" />
+                  <path d="M128 0 V264" strokeWidth="9" />
+                  <path d="M236 0 V264" strokeWidth="6" />
+                  <path d="M62 0 V264" strokeWidth="5" />
+                  <path d="M330 0 V264" strokeWidth="5" />
+                  <path d="M0 20 H400" strokeWidth="3" />
+                  <path d="M0 138 H400" strokeWidth="3" />
+                  <path d="M0 240 H400" strokeWidth="3" />
+                  <path d="M182 0 V264" strokeWidth="3" />
+                  <path d="M284 0 V264" strokeWidth="3" />
+                  <path d="M18 0 V264" strokeWidth="3" />
+                </g>
+                <g stroke="#f7d574" fill="none" strokeWidth={8} strokeLinecap="round">
+                  <path d="M-10 250 C90 232 140 154 214 128 C288 102 330 40 420 24" />
+                </g>
+                <g stroke="#f1c94a" fill="none" strokeWidth={1} opacity={0.7}>
+                  <path d="M-10 250 C90 232 140 154 214 128 C288 102 330 40 420 24" />
+                </g>
+              </svg>
+            </div>
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="xMidYMid meet"
+              className="absolute inset-0 h-full w-full"
+            >
+              <circle
+                cx={50}
+                cy={50}
+                r={circleR}
+                fill="rgba(88,128,166,0.18)"
+                stroke="#5980a6"
+                strokeWidth={0.5}
+                strokeDasharray="1.6 1.2"
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1={50}
+                y1={50}
+                x2={radiusLineX}
+                y2={50}
+                stroke="#5980a6"
+                strokeWidth={0.4}
+                strokeDasharray="1.2 1"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-full flex-col items-center">
+              <MapPin
+                className="h-[26px] w-[26px] fill-red-500 stroke-red-500 drop-shadow"
+                strokeWidth={2}
+              />
+            </div>
+            <span className="absolute left-1/2 top-[calc(50%-10px)] translate-x-1.5 rounded-md bg-gray-900/85 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+              {validRadius ? `${radiusNum} km` : "—"}
+            </span>
+            <div className="absolute left-2.5 top-2.5 max-w-[60%] truncate rounded-md bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-gray-900">
+              {selected ? selected.title : "No center set"}
+            </div>
+            <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5">
+              <div className="h-[3px] w-14 border-x border-gray-900 bg-gray-900" />
+              <span className="text-[10px] font-semibold text-gray-900">
+                {MAP_HALF_SPAN_KM / 2} km
+              </span>
+            </div>
+            {clamped && (
+              <div className="absolute bottom-2.5 right-2.5 rounded-md bg-amber-800/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Beyond map extent
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] text-gray-400">
+            {selected
+              ? selected.address
+              : "Pick a center address, then set the radius — the circle is drawn from those coordinates."}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-gray-100 p-4">
+          {canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="mr-auto inline-flex items-center gap-1.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-[13px] font-medium text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete range
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saveDisabled}
+            onClick={() => onSave(radiusNum)}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${
+              saveDisabled
+                ? "cursor-not-allowed bg-[#FACC15]/45 text-[#121621]/60"
+                : "bg-[#FACC15] text-[#121621] hover:bg-[#eab308]"
+            }`}
+          >
+            Set range
           </button>
         </div>
       </div>

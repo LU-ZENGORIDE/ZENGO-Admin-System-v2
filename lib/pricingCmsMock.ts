@@ -114,11 +114,28 @@ export const SIGHTSEEING_PRICE_SEED: SightseeingPriceRow[] = [
   },
 ];
 
+export interface MapLocationSuggestion {
+  title: string;
+  address: string;
+}
+
+export interface AirportPriceZone {
+  id: string;
+  name: string;
+  radiusKm: number | null;
+  center: MapLocationSuggestion | null;
+  fixedFee: number;
+}
+
 export interface AirportPriceLeg {
   airport: string;
   fixedFee: number;
   distanceCapKm: number;
   excessRatePerKm: number;
+  /** Fix-rate bands drawn on the range picker. Absent/empty means the leg
+   * hasn't been split yet — legZones() derives a single "Standard" band
+   * from fixedFee so older seed data still renders. */
+  zones?: AirportPriceZone[];
 }
 
 export interface AirportPriceRow {
@@ -157,6 +174,50 @@ export const AIRPORT_DISTANCE_CAP_KM: Record<string, number> = {
   "Chubu Centrair Airport": 60,
   "New Chitose Airport": 60,
 };
+
+export const MAP_LOCATION_SUGGESTIONS: MapLocationSuggestion[] = [
+  { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" },
+  { title: "THE OSAKA STATION HOTEL, Autograph Collection", address: "3 Chome-2-2 Umeda, Kita Ward, Osaka, Japan" },
+  { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" },
+  { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" },
+  { title: "Mount Wakakusa", address: "469 Zōshichō, Nara, Japan" },
+  { title: "Yotsuya Station", address: "1 Chome Yotsuya, Shinjuku City, Tokyo, Japan" },
+  { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" },
+  { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" },
+  { title: "Narita Airport", address: "1-1 Furugome, Narita, Chiba, Japan" },
+  { title: "Haneda Airport", address: "2-6-5 Hanedakuko, Ota City, Tokyo, Japan" },
+  { title: "Kansai Airport", address: "1 Senshukuko Kita, Izumisano, Osaka, Japan" },
+  { title: "Osaka Itami Airport", address: "3-555 Hotarugaike Nishimachi, Toyonaka, Osaka, Japan" },
+  { title: "Chubu Centrair Airport", address: "1-1 Centrair, Tokoname, Aichi, Japan" },
+  { title: "New Chitose Airport", address: "Bibi, Chitose, Hokkaido, Japan" },
+];
+
+export const AIRPORT_MAP_LOCATIONS: Record<string, MapLocationSuggestion> = {};
+MAP_LOCATION_SUGGESTIONS.filter((l) => /Airport$/.test(l.title)).forEach((l) => {
+  AIRPORT_MAP_LOCATIONS[l.title] = l;
+});
+
+/** Fix-rate bands belong to the leg — each vehicle configures its own bands
+ * per airport. A leg without `zones` yet carries one flat fixedFee, which
+ * becomes the first "Standard" band until edited. */
+export function legZones(leg: AirportPriceLeg): AirportPriceZone[] {
+  if (leg.zones && leg.zones.length) return leg.zones;
+  return [
+    {
+      id: leg.airport + "::z1",
+      name: "Standard",
+      radiusKm: AIRPORT_DISTANCE_CAP_KM[leg.airport] ?? null,
+      center: null,
+      fixedFee: leg.fixedFee,
+    },
+  ];
+}
+
+export function nextZoneId(zones: AirportPriceZone[], airport: string): string {
+  let n = zones.length + 1;
+  while (zones.some((z) => z.id === airport + "::z" + n)) n++;
+  return airport + "::z" + n;
+}
 
 export const AIRPORT_PRICE_SEED: AirportPriceRow[] = [
   {
