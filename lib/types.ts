@@ -1,6 +1,6 @@
 export type OfficeLocation = "Tokyo" | "Osaka" | "Nagoya" | "Sapporo";
 
-export type DurationTier = "Half Day 5hrs" | "Full Day 10hrs";
+export type DurationTier = "Half Day" | "Full Day";
 
 export type TourStatus = "active" | "inactive";
 
@@ -119,6 +119,6 @@ export const OFFICE_LOCATIONS: OfficeLocation[] = [
   "Sapporo",
 ];
 
-export const DURATION_TIERS: DurationTier[] = ["Half Day 5hrs", "Full Day 10hrs"];
+export const DURATION_TIERS: DurationTier[] = ["Half Day", "Full Day"];
 
 export const SERVICE_TYPES: ServiceType[] = ["Sightseeing Charter", "Airport"];
