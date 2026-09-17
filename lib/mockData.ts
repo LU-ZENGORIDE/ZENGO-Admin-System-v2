@@ -175,17 +175,6 @@ const AIRPORT_ROUTE_DEFS: AirportRouteDef[] = [
  * ballpark as the Airport Price CMS's fixed fees for the same airports. */
 const USD_TO_JPY = 150;
 
-/** Short, recognizable names for trip titles — e.g. "Narita to Tokyo (23
- * Wards)" instead of "Narita Airport → Tokyo (23 Wards)". */
-const AIRPORT_SHORT_NAMES: Record<string, string> = {
-  "Narita Airport": "Narita",
-  "Haneda Airport": "Haneda",
-  "Kansai Airport": "Kansai",
-  "Osaka Itami Airport": "Itami",
-  "Chubu Centrair Airport": "Centrair",
-  "New Chitose Airport": "Chitose",
-};
-
 /** No dedicated per-route details page exists on the marketing site yet —
  * every Airport preset's "tour details" link points at the general
  * routes page these presets were seeded from. */
@@ -199,9 +188,8 @@ const airportBookingSeqCounters: Record<string, number> = {};
 function buildAirportPresetTours(): TourTemplate[] {
   return AIRPORT_ROUTE_DEFS.map((route, index) => {
     const id = `#A${String(index + 1).padStart(4, "0")}${route.office[0]}`;
-    const shortName = AIRPORT_SHORT_NAMES[route.airport] ?? route.airport;
-    const tripName = `${shortName} to ${route.destination}`;
     const airportCode = AIRPORT_CODES[route.airport] ?? route.airport;
+    const tripName = `${airportCode} to ${route.destination}`;
     airportBookingSeqCounters[airportCode] =
       (airportBookingSeqCounters[airportCode] ?? 0) + 1;
     const bookingSequence = String(
