@@ -114,11 +114,28 @@ export const SIGHTSEEING_PRICE_SEED: SightseeingPriceRow[] = [
   },
 ];
 
+export interface MapLocationSuggestion {
+  title: string;
+  address: string;
+}
+
+export interface AirportPriceZone {
+  id: string;
+  name: string;
+  radiusKm: number | null;
+  center: MapLocationSuggestion | null;
+  fixedFee: number;
+}
+
 export interface AirportPriceLeg {
   airport: string;
   fixedFee: number;
   distanceCapKm: number;
   excessRatePerKm: number;
+  /** Fix-rate bands drawn on the range picker. Absent/empty means the leg
+   * hasn't been split yet — legZones() derives a single "Standard" band
+   * from fixedFee so older seed data still renders. */
+  zones?: AirportPriceZone[];
 }
 
 export interface AirportPriceRow {
@@ -157,6 +174,50 @@ export const AIRPORT_DISTANCE_CAP_KM: Record<string, number> = {
   "Chubu Centrair Airport": 60,
   "New Chitose Airport": 60,
 };
+
+export const MAP_LOCATION_SUGGESTIONS: MapLocationSuggestion[] = [
+  { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" },
+  { title: "THE OSAKA STATION HOTEL, Autograph Collection", address: "3 Chome-2-2 Umeda, Kita Ward, Osaka, Japan" },
+  { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" },
+  { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" },
+  { title: "Mount Wakakusa", address: "469 Zōshichō, Nara, Japan" },
+  { title: "Yotsuya Station", address: "1 Chome Yotsuya, Shinjuku City, Tokyo, Japan" },
+  { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" },
+  { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" },
+  { title: "Narita Airport", address: "1-1 Furugome, Narita, Chiba, Japan" },
+  { title: "Haneda Airport", address: "2-6-5 Hanedakuko, Ota City, Tokyo, Japan" },
+  { title: "Kansai Airport", address: "1 Senshukuko Kita, Izumisano, Osaka, Japan" },
+  { title: "Osaka Itami Airport", address: "3-555 Hotarugaike Nishimachi, Toyonaka, Osaka, Japan" },
+  { title: "Chubu Centrair Airport", address: "1-1 Centrair, Tokoname, Aichi, Japan" },
+  { title: "New Chitose Airport", address: "Bibi, Chitose, Hokkaido, Japan" },
+];
+
+export const AIRPORT_MAP_LOCATIONS: Record<string, MapLocationSuggestion> = {};
+MAP_LOCATION_SUGGESTIONS.filter((l) => /Airport$/.test(l.title)).forEach((l) => {
+  AIRPORT_MAP_LOCATIONS[l.title] = l;
+});
+
+/** Fix-rate bands belong to the leg — each vehicle configures its own bands
+ * per airport. A leg without `zones` yet carries one flat fixedFee, which
+ * becomes the first "Standard" band until edited. */
+export function legZones(leg: AirportPriceLeg): AirportPriceZone[] {
+  if (leg.zones && leg.zones.length) return leg.zones;
+  return [
+    {
+      id: leg.airport + "::z1",
+      name: "Standard",
+      radiusKm: AIRPORT_DISTANCE_CAP_KM[leg.airport] ?? null,
+      center: null,
+      fixedFee: leg.fixedFee,
+    },
+  ];
+}
+
+export function nextZoneId(zones: AirportPriceZone[], airport: string): string {
+  let n = zones.length + 1;
+  while (zones.some((z) => z.id === airport + "::z" + n)) n++;
+  return airport + "::z" + n;
+}
 
 export const AIRPORT_PRICE_SEED: AirportPriceRow[] = [
   {
@@ -417,12 +478,118 @@ export const AIRPORT_PRICE_SEED: AirportPriceRow[] = [
   },
 ];
 
+export interface CustomizedPriceRow {
+  id: string;
+  vehicleType: string;
+  vehicleName: string;
+  office: PricingOffice;
+  owner: string;
+  available: boolean;
+  minDurationHrs: number | null;
+  tieredPricing: boolean;
+  unitPrice: number | null;
+  unit1to4: number | null;
+  unit4to7: number | null;
+  unit7to10: number | null;
+  fixedRateAvailable: boolean;
+  fixedRateFromHrs: number | null;
+  fixedRateToHrs: number | null;
+  fixedRate: number | null;
+  overtimeCharge: number | null;
+  dispatchFee: number | null;
+  dispatchFreeKm: number | null;
+  returnFee: number | null;
+  returnFreeKm: number | null;
+  longDistanceMaxKm: number | null;
+  longDistanceOverchargeRate: number | null;
+}
+
+/** Per-vehicle-type charter pricing defaults, keyed off the same Vehicle
+ * Lineup identity (type/name/office/owner) that Sightseeing Price uses —
+ * Customized Price never invents its own vehicles. */
+const CUSTOMIZED_PRICE_BASE: Record<
+  string,
+  {
+    minDurationHrs: number;
+    unit1to4: number;
+    unit4to7: number;
+    unit7to10: number;
+    fixedRate: number;
+    overtimeCharge: number;
+    dispatchFee: number;
+    dispatchFreeKm: number;
+  }
+> = {
+  "Commuter Van": {
+    minDurationHrs: 4,
+    unit1to4: 12000,
+    unit4to7: 10500,
+    unit7to10: 9500,
+    fixedRate: 66000,
+    overtimeCharge: 4500,
+    dispatchFee: 2000,
+    dispatchFreeKm: 20,
+  },
+  "Premium Minivan": {
+    minDurationHrs: 3,
+    unit1to4: 14000,
+    unit4to7: 12500,
+    unit7to10: 11000,
+    fixedRate: 72000,
+    overtimeCharge: 5200,
+    dispatchFee: 2500,
+    dispatchFreeKm: 25,
+  },
+  "Crossover EV": {
+    minDurationHrs: 2,
+    unit1to4: 11000,
+    unit4to7: 9800,
+    unit7to10: 8800,
+    fixedRate: 60000,
+    overtimeCharge: 4000,
+    dispatchFee: 1500,
+    dispatchFreeKm: 15,
+  },
+};
+
+export const CUSTOMIZED_PRICE_SEED: CustomizedPriceRow[] = SIGHTSEEING_PRICE_SEED.map(
+  (r) => {
+    const base =
+      CUSTOMIZED_PRICE_BASE[r.vehicleType] ?? CUSTOMIZED_PRICE_BASE["Commuter Van"];
+    return {
+      id: r.id.replace("sp-", "cp-"),
+      vehicleType: r.vehicleType,
+      vehicleName: r.vehicleName,
+      office: r.office,
+      owner: r.owner,
+      available: r.available,
+      minDurationHrs: base.minDurationHrs,
+      tieredPricing: true,
+      unitPrice: null,
+      unit1to4: base.unit1to4,
+      unit4to7: base.unit4to7,
+      unit7to10: base.unit7to10,
+      fixedRateAvailable: true,
+      fixedRateFromHrs: 4,
+      fixedRateToHrs: 10,
+      fixedRate: base.fixedRate,
+      overtimeCharge: base.overtimeCharge,
+      dispatchFee: base.dispatchFee,
+      dispatchFreeKm: base.dispatchFreeKm,
+      returnFee: base.dispatchFee,
+      returnFreeKm: base.dispatchFreeKm,
+      longDistanceMaxKm: null,
+      longDistanceOverchargeRate: null,
+    };
+  },
+);
+
 export const PRICING_CMS_TABS = [
   "Offices",
   "Airports",
   "Vehicle Lineup",
   "Vehicle Detail",
-  "Sightseeing Price",
+  "Tour Charters",
   "Customized Price",
   "Airport Price",
   "Value-Add Services",
