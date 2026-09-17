@@ -66,7 +66,7 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
         </ul>
       </nav>
 
-      <div className="border-t border-white/10 px-3 py-3">
+      <div className="flex justify-end border-t border-white/10 px-3 py-3">
         <button
           type="button"
           onClick={toggleDebugMode}
@@ -76,25 +76,13 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
               : "Turn on debug mode"
           }
           aria-pressed={debugMode}
-          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
             debugMode
               ? "bg-emerald-500/15 text-emerald-400"
               : "text-white/40 hover:bg-white/5 hover:text-white/70"
           }`}
         >
           <Bug className="h-4 w-4 shrink-0" />
-          Debug Mode
-          <span
-            className={`ml-auto inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
-              debugMode ? "bg-emerald-500" : "bg-white/15"
-            }`}
-          >
-            <span
-              className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${
-                debugMode ? "translate-x-[13px]" : "translate-x-0.5"
-              }`}
-            />
-          </span>
         </button>
       </div>
     </aside>
