@@ -1,0 +1,2209 @@
+<meta charset="utf-8">
+<title>Zen Go Admin Console</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+
+<style>
+  :root{
+    --bg-app:#f7f8fa; --bg-card:#ffffff; --bg-subtle:#f3f4f6;
+    --border:#e5e7eb; --border-soft:#f0f1f3;
+    --text-1:#111827; --text-2:#4b5563; --text-3:#9ca3af;
+    --accent:#FACC15; --accent-ink:#121621; --accent-hover:#eab308;
+    --sidebar-bg:#121621;
+    --ok:#10b981; --ok-bg:#ecfdf5; --info:#3b82f6; --info-bg:#eff6ff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg-app:#0f1115; --bg-card:#171a21; --bg-subtle:#1c1f28;
+      --border:#2a2e38; --border-soft:#22252e;
+      --text-1:#f3f4f6; --text-2:#a8adb8; --text-3:#6b7280;
+      --ok-bg:#0b2c22; --info-bg:#0d2440;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg-app:#0f1115; --bg-card:#171a21; --bg-subtle:#1c1f28;
+    --border:#2a2e38; --border-soft:#22252e;
+    --text-1:#f3f4f6; --text-2:#a8adb8; --text-3:#6b7280;
+    --ok-bg:#0b2c22; --info-bg:#0d2440;
+  }
+  body{ margin:0; background:var(--bg-app); color:var(--text-1); font-family:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+  ::-webkit-scrollbar{ height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:8px; }
+  .dbg-tag{
+    display:inline-block; margin-top:2px; font-size:9px; line-height:1.3; padding:1px 5px;
+    border-radius:4px; background:var(--ok-bg); color:var(--ok); font-family:'JetBrains Mono',monospace;
+    white-space:nowrap;
+  }
+</style>
+
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useCallback, useRef, useEffect, createContext, useContext } = React;
+
+/* ---------------- icons (inline, lucide-style) ---------------- */
+function Icon({ children, size=16, className="", ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...rest}>
+      {children}
+    </svg>
+  );
+}
+const IconSearch = (p) => <Icon {...p}><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></Icon>;
+const IconPlus = (p) => <Icon {...p}><path d="M12 5v14M5 12h14"/></Icon>;
+const IconRefresh = (p) => <Icon {...p}><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 21v-5h5"/></Icon>;
+const IconTrash = (p) => <Icon {...p}><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></Icon>;
+const IconCheck = (p) => <Icon {...p}><path d="M20 6 9 17l-5-5"/></Icon>;
+const IconChevronDown = (p) => <Icon {...p}><path d="M6 9l6 6 6-6"/></Icon>;
+const IconGlobe = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></Icon>;
+const IconCalendarClock = (p) => <Icon {...p}><rect x="3" y="5" width="14" height="16" rx="2"/><path d="M3 10h14M8 3v4"/><circle cx="18" cy="17" r="5"/><path d="M18 15v2l1.3 1.3"/></Icon>;
+const IconArrowUp = (p) => <Icon {...p}><path d="M12 19V5M5 12l7-7 7 7"/></Icon>;
+const IconArrowDown = (p) => <Icon {...p}><path d="M12 5v14M19 12l-7 7-7-7"/></Icon>;
+const IconArrowUpDown = (p) => <Icon {...p}><path d="M8 3v14M8 3 4 7M8 3l4 4"/><path d="M16 21V7M16 21l4-4M16 21l-4-4"/></Icon>;
+const IconSliders = (p) => <Icon {...p}><path d="M4 6h9M17 6h3M4 18h3M11 18h9"/><circle cx="15" cy="6" r="2"/><circle cx="8" cy="18" r="2"/></Icon>;
+const IconBug = (p) => <Icon {...p}><rect x="7" y="8" width="10" height="11" rx="5"/><path d="M9 8V6a3 3 0 0 1 6 0v2M4 12H2M22 12h-2M5 7 3 5M19 7l2-2M4 18l-2 1M20 18l2 1M9 8h6"/></Icon>;
+const IconClipboard = (p) => <Icon {...p}><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8 10h8M8 14h8M8 18h5"/></Icon>;
+const IconDollar = (p) => <Icon {...p}><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.2-5 3 2.2 2.7 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/></Icon>;
+const IconLayout = (p) => <Icon {...p}><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></Icon>;
+const IconMap = (p) => <Icon {...p}><path d="M9 3 3 5v16l6-2 6 2 6-2V3l-6 2-6-2Z"/><path d="M9 3v16M15 5v16"/></Icon>;
+const IconPencil = (p) => <Icon {...p}><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.8 2.8L7 18.6 3 20l1.4-4Z"/></Icon>;
+const IconX = (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12"/></Icon>;
+const IconMapPin = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>;
+
+/* ---------------- debug mode ---------------- */
+const DebugCtx = createContext({ debugMode: false, toggle: () => {} });
+function useDebugMode() { return useContext(DebugCtx); }
+function DebugField({ model, field, children }) {
+  const { debugMode } = useDebugMode();
+  return (
+    <div>
+      {children}
+      {debugMode && <span className="dbg-tag">{model}.{field}</span>}
+    </div>
+  );
+}
+
+/* ---------------- shared utils ---------------- */
+function formatPrice(v) { return v === null || v === undefined ? "—" : `¥${Number(v).toLocaleString("ja-JP")}`; }
+function serviceTypeBadge(type) {
+  if (type === "Airport") return "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300";
+  if (type === "Sightseeing Charter") return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300";
+  return "bg-gray-100 text-gray-500";
+}
+const OFFICE_LOCATIONS = ["Tokyo", "Osaka", "Nagoya", "Sapporo"];
+const SERVICE_TYPES = ["Sightseeing Charter", "Airport"];
+const DURATION_TIERS = ["Half Day 5hrs", "Full Day 10hrs"];
+const AIRPORT_CODES = { "Narita Airport": "NRT", "Haneda Airport": "HND", "Kansai Airport": "KIX", "Osaka Itami Airport": "ITM", "Chubu Centrair Airport": "NGO", "New Chitose Airport": "CTS" };
+const OFFICE_AIRPORTS = { Tokyo: ["Narita Airport", "Haneda Airport"], Osaka: ["Kansai Airport", "Osaka Itami Airport"], Nagoya: ["Chubu Centrair Airport"], Sapporo: ["New Chitose Airport"] };
+
+/* ---------------- lib/tourUtils.ts + lib/mapLocationMock.ts ports ---------------- */
+const MAP_LOCATION_SUGGESTIONS = [
+  { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" },
+  { title: "THE OSAKA STATION HOTEL, Autograph Collection", address: "3 Chome-2-2 Umeda, Kita Ward, Osaka, Japan" },
+  { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" },
+  { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" },
+  { title: "Mount Wakakusa", address: "469 Zōshichō, Nara, Japan" },
+  { title: "Yotsuya Station", address: "1 Chome Yotsuya, Shinjuku City, Tokyo, Japan" },
+  { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" },
+  { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" },
+  { title: "Narita Airport", address: "1-1 Furugome, Narita, Chiba, Japan" },
+  { title: "Haneda Airport", address: "2-6-5 Hanedakuko, Ota City, Tokyo, Japan" },
+  { title: "Kansai Airport", address: "1 Senshukuko Kita, Izumisano, Osaka, Japan" },
+  { title: "Osaka Itami Airport", address: "3-555 Hotarugaike Nishimachi, Toyonaka, Osaka, Japan" },
+  { title: "Chubu Centrair Airport", address: "1-1 Centrair, Tokoname, Aichi, Japan" },
+  { title: "New Chitose Airport", address: "Bibi, Chitose, Hokkaido, Japan" },
+];
+const AIRPORT_MAP_LOCATIONS = Object.fromEntries(
+  MAP_LOCATION_SUGGESTIONS.filter((loc) => loc.title.endsWith("Airport")).map((loc) => [loc.title, loc])
+);
+function searchMapLocations(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return MAP_LOCATION_SUGGESTIONS.slice(0, 5);
+  return MAP_LOCATION_SUGGESTIONS.filter((loc) => loc.title.toLowerCase().includes(q) || loc.address.toLowerCase().includes(q));
+}
+function slugifyTripName(name) {
+  return name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+function draftIdForServiceType(type) {
+  if (type === "Sightseeing Charter") return "#T-----";
+  if (type === "Airport") return "#A-----";
+  return "-----";
+}
+function serviceTypeBadgeClasses(type) {
+  if (type === "Airport") return "bg-blue-50 text-blue-700";
+  if (type === "Sightseeing Charter") return "bg-emerald-50 text-emerald-700";
+  return "bg-gray-100 text-gray-500";
+}
+function airportDisplayName(airport) {
+  const code = AIRPORT_CODES[airport];
+  return code ? `${airport} (${code})` : airport;
+}
+function resolveAirportPickup(office) {
+  if (!office) return { airport: null, pickup: "", pickupMapLocation: null };
+  const airports = OFFICE_AIRPORTS[office] ?? [];
+  if (airports.length === 1) {
+    const airport = airports[0];
+    return { airport, pickup: airportDisplayName(airport), pickupMapLocation: AIRPORT_MAP_LOCATIONS[airport] ?? null };
+  }
+  return { airport: null, pickup: "", pickupMapLocation: null };
+}
+function formatDuration(mins) {
+  if (mins === null || mins === undefined) return "—";
+  const hours = Math.floor(mins / 60);
+  const minutes = mins % 60;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+/** Prototype stand-in for a real routing API: deterministic "distance" per
+ * leg derived from location names, so the same route always estimates the
+ * same numbers. Requires pickup + dropoff to both have a map location set. */
+function estimateRouteMetrics(waypoints) {
+  const pickup = waypoints.pickupMapLocation;
+  const dropoff = waypoints.dropoffMapLocation;
+  if (!pickup || !dropoff) return null;
+  const points = [pickup, ...waypoints.stopovers.map((s) => s.mapLocation).filter(Boolean), dropoff];
+  const hash = (str) => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 10007; return h; };
+  let distanceKm = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const seed = hash(`${points[i].title}::${points[i + 1].title}`);
+    distanceKm += 8 + (seed % 40);
+  }
+  distanceKm = Math.round(distanceKm * 10) / 10;
+  const stopoverCount = points.length - 2;
+  const durationMins = Math.round(distanceKm * 1.6 + stopoverCount * 5);
+  return { distanceKm, durationMins };
+}
+function suggestedPriceForOffice(office, isHalfDay) {
+  const rows = SIGHTSEEING_PRICE_SEED.filter((r) => r.office === office && r.available);
+  if (rows.length === 0) return 0;
+  const values = rows.map((r) => (isHalfDay ? r.halfDayPrice : r.fullDayPrice));
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  return Math.round(avg / 1000) * 1000;
+}
+
+/* ---------------- seed data (ported from lib/mockData.ts + lib/pricingCmsMock.ts) ---------------- */
+function emptyWaypoints() {
+  return { pickup: "", pickupTime: "09:00", pickupMapLocation: null, stopovers: [], dropoff: "", dropoffMapLocation: null };
+}
+const SIGHTSEEING_SEED_TOURS = [
+  { id: "#T0001A", reference: "#T0001A", tripName: "Autumn Foliage & Deer Paths", officeLocation: "Osaka", durationTier: "Half Day 5hrs", status: "active", price: 60000, startTime: "09:00", viewedCount: 27, bookedCount: 3, serviceType: "Sightseeing Charter", airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+    waypoints: { pickup: "Osaka Station", pickupTime: "09:00", pickupMapLocation: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" }, stopovers: [
+      { location: "Nara Park", waitTime: "90 min", mapLocation: { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" } },
+      { location: "Todai-ji Temple", waitTime: "60 min", mapLocation: { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" } },
+    ], dropoff: "Osaka Station", dropoffMapLocation: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" } },
+    routeDistanceKm: 80.2, routeDurationMins: 330, tripDistanceKm: null, tripDurationMins: null,
+    previewLinks: { tourDetails: "https://www.zengoride.com/tours/autumn-foliage-deer-paths", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/autumn-foliage-deer-paths/00001/2026-09-02" } },
+  { id: "#T0002A", reference: "#T0002A", tripName: "Buddha by the Beach", officeLocation: "Tokyo", durationTier: "Half Day 5hrs", status: "active", price: 50000, startTime: "09:00", viewedCount: 41, bookedCount: 7, serviceType: "Sightseeing Charter", airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+    waypoints: { pickup: "Kamakura Station", pickupTime: "09:00", pickupMapLocation: { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" }, stopovers: [
+      { location: "Great Buddha (Daibutsu)", waitTime: "45 min", mapLocation: { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" } },
+      { location: "Yuigahama Beach", waitTime: "30 min", mapLocation: null },
+    ], dropoff: "Kamakura Station", dropoffMapLocation: { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" } },
+    routeDistanceKm: 45.0, routeDurationMins: 300, tripDistanceKm: null, tripDurationMins: null,
+    previewLinks: { tourDetails: "https://www.zengoride.com/tours/buddha-by-the-beach", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/buddha-by-the-beach/00002/2026-09-02" } },
+  { id: "#T0003A", reference: "#T0003A", tripName: "Flavors of Edo", officeLocation: "Tokyo", durationTier: "Full Day 10hrs", status: "inactive", price: 80000, startTime: "10:00", viewedCount: 12, bookedCount: 1, serviceType: "Sightseeing Charter", airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+    waypoints: { pickup: "Tokyo Station", pickupTime: "10:00", pickupMapLocation: null, stopovers: [
+      { location: "Tsukiji Outer Market", waitTime: "60 min", mapLocation: null },
+      { location: "Asakusa Senso-ji", waitTime: "45 min", mapLocation: null },
+    ], dropoff: "Shibuya Crossing", dropoffMapLocation: null },
+    routeDistanceKm: 30.5, routeDurationMins: 600, tripDistanceKm: null, tripDurationMins: null,
+    previewLinks: { tourDetails: "https://www.zengoride.com/tours/flavors-of-edo", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/flavors-of-edo/00003/2026-09-02" } },
+];
+const AIRPORT_ROUTE_DEFS = [
+  { airport: "Narita Airport", office: "Tokyo", destination: "Tokyo (23 Wards)", priceUsd: 116 },
+  { airport: "Narita Airport", office: "Tokyo", destination: "Yokohama (Central)", priceUsd: 153 },
+  { airport: "Narita Airport", office: "Tokyo", destination: "Chiba City", priceUsd: 60 },
+  { airport: "Narita Airport", office: "Tokyo", destination: "Disneyland Resort", priceUsd: 100 },
+  { airport: "Haneda Airport", office: "Tokyo", destination: "Tokyo (23 Wards)", priceUsd: 73 },
+  { airport: "Haneda Airport", office: "Tokyo", destination: "Yokohama", priceUsd: 68 },
+  { airport: "Haneda Airport", office: "Tokyo", destination: "Kawasaki", priceUsd: 65 },
+  { airport: "Haneda Airport", office: "Tokyo", destination: "Chiba City", priceUsd: 120 },
+  { airport: "Kansai Airport", office: "Osaka", destination: "Osaka City", priceUsd: 85 },
+  { airport: "Kansai Airport", office: "Osaka", destination: "Kyoto City", priceUsd: 122 },
+  { airport: "Kansai Airport", office: "Osaka", destination: "Wakayama City", priceUsd: 153 },
+  { airport: "Kansai Airport", office: "Osaka", destination: "Universal Studios Osaka", priceUsd: 85 },
+  { airport: "Chubu Centrair Airport", office: "Nagoya", destination: "Nagoya City (16 Wards)", priceUsd: 85 },
+  { airport: "Chubu Centrair Airport", office: "Nagoya", destination: "Lego Land", priceUsd: 73 },
+  { airport: "Osaka Itami Airport", office: "Osaka", destination: "Osaka City", priceUsd: 70 },
+  { airport: "Osaka Itami Airport", office: "Osaka", destination: "Kyoto City", priceUsd: 92 },
+  { airport: "New Chitose Airport", office: "Sapporo", destination: "Sapporo City", priceUsd: 140 },
+  { airport: "New Chitose Airport", office: "Sapporo", destination: "Furano / Biei", priceUsd: 240 },
+];
+const AIRPORT_SHORT_NAMES = { "Narita Airport": "Narita", "Haneda Airport": "Haneda", "Kansai Airport": "Kansai", "Osaka Itami Airport": "Itami", "Chubu Centrair Airport": "Centrair", "New Chitose Airport": "Chitose" };
+function buildAirportPresetTours() {
+  return AIRPORT_ROUTE_DEFS.map((route, index) => {
+    const id = `#A${String(index + 1).padStart(4, "0")}${route.office[0]}`;
+    const shortName = AIRPORT_SHORT_NAMES[route.airport] || route.airport;
+    return {
+      id, reference: id, tripName: `${shortName} to ${route.destination}`, officeLocation: route.office, durationTier: null,
+      status: "active", price: Math.round((route.priceUsd * 150) / 100) * 100, startTime: "09:00",
+      viewedCount: 0, bookedCount: 0, serviceType: "Airport", airport: route.airport,
+      userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null,
+      driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+      waypoints: { pickup: airportDisplayName(route.airport), pickupTime: "09:00", pickupMapLocation: AIRPORT_MAP_LOCATIONS[route.airport] ?? null, stopovers: [], dropoff: route.destination, dropoffMapLocation: null },
+      routeDistanceKm: null, routeDurationMins: null, tripDistanceKm: null, tripDurationMins: null,
+      previewLinks: { tourDetails: "https://www.zengoride.com/airport-transfer", tourBooking: `https://exert-hula-resilient.ngrok-free.dev/airport/${AIRPORT_CODES[route.airport]}/${String(index+1).padStart(4,"0")}/2026-09-02` },
+    };
+  });
+}
+const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()];
+
+const SIGHTSEEING_PRICE_SEED = [
+  { id: "sp-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 10000, fullDayPrice: 12000 },
+  { id: "sp-2", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", office: "Osaka", owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
+  { id: "sp-3", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", office: "Nagoya", owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
+  { id: "sp-4", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 49000, fullDayPrice: 68000 },
+  { id: "sp-5", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", office: "Osaka", owner: "Self", available: false, halfDayPrice: 47000, fullDayPrice: 62000 },
+  { id: "sp-6", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 42000, fullDayPrice: 59000 },
+  { id: "sp-7", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
+  { id: "sp-11", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", office: "Osaka", owner: "Self", available: true, halfDayPrice: 48000, fullDayPrice: 64000 },
+  { id: "sp-12", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", office: "Osaka", owner: "Self", available: true, halfDayPrice: 43000, fullDayPrice: 60000 },
+  { id: "sp-14", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", office: "Sapporo", owner: "Self", available: true, halfDayPrice: 52000, fullDayPrice: 72000 },
+];
+const AIRPORT_PRICE_SEED = [
+  { id: "ap-1", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Tokyo", owner: "Partner", available: true, legs: [{ airport: "Narita Airport", fixedFee: 29318 }, { airport: "Haneda Airport", fixedFee: 21977 }] },
+  { id: "ap-2", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", office: "Tokyo", owner: "Self", available: true, legs: [{ airport: "Narita Airport", fixedFee: 19318 }, { airport: "Haneda Airport", fixedFee: 14705 }] },
+  { id: "ap-3", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", office: "Tokyo", owner: "Self", available: true, legs: [{ airport: "Narita Airport", fixedFee: 13864 }, { airport: "Haneda Airport", fixedFee: 7432 }] },
+  { id: "ap-5", vehicleType: "Luxury Sedan", vehicleName: "Mercedes Benz S-Class 4 Matic", office: "Tokyo", owner: "Partner", available: true, legs: [{ airport: "Narita Airport", fixedFee: 24500 }, { airport: "Haneda Airport", fixedFee: 18200 }] },
+  { id: "ap-11", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Osaka", owner: "Partner", available: true, legs: [{ airport: "Kansai Airport", fixedFee: 23000 }, { airport: "Osaka Itami Airport", fixedFee: 19000 }] },
+  { id: "ap-12", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", office: "Osaka", owner: "Partner", available: true, legs: [{ airport: "Kansai Airport", fixedFee: 14773 }, { airport: "Osaka Itami Airport", fixedFee: 12866 }] },
+  { id: "ap-16", vehicleType: "Premium Van", vehicleName: "Mercedes Benz V-Class", office: "Osaka", owner: "Self", available: false, legs: [] },
+  { id: "ap-18", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Nagoya", owner: "Partner", available: true, legs: [{ airport: "Chubu Centrair Airport", fixedFee: 18500 }] },
+  { id: "ap-21", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Sapporo", owner: "Partner", available: true, legs: [{ airport: "New Chitose Airport", fixedFee: 20000 }] },
+];
+const CUSTOMIZED_PRICE_BASE = {
+  "Commuter Van": { minDurationHrs: 4, unit1to4: 12000, unit4to7: 10500, unit7to10: 9500, fixedRate: 66000, overtimeCharge: 4500, dispatchFee: 2000, dispatchFreeKm: 20 },
+  "Premium Minivan": { minDurationHrs: 3, unit1to4: 14000, unit4to7: 12500, unit7to10: 11000, fixedRate: 72000, overtimeCharge: 5200, dispatchFee: 2500, dispatchFreeKm: 25 },
+  "Crossover EV": { minDurationHrs: 2, unit1to4: 11000, unit4to7: 9800, unit7to10: 8800, fixedRate: 60000, overtimeCharge: 4000, dispatchFee: 1500, dispatchFreeKm: 15 },
+};
+const CUSTOMIZED_PRICE_SEED = SIGHTSEEING_PRICE_SEED.map((r) => {
+  const base = CUSTOMIZED_PRICE_BASE[r.vehicleType] || CUSTOMIZED_PRICE_BASE["Commuter Van"];
+  return { id: r.id.replace("sp-", "cp-"), vehicleType: r.vehicleType, vehicleName: r.vehicleName, office: r.office, owner: r.owner, available: r.available,
+    minDurationHrs: base.minDurationHrs, tieredPricing: true, unitPrice: null, unit1to4: base.unit1to4, unit4to7: base.unit4to7, unit7to10: base.unit7to10,
+    fixedRateAvailable: true, fixedRateFromHrs: 4, fixedRateToHrs: 10, fixedRate: base.fixedRate, overtimeCharge: base.overtimeCharge,
+    dispatchFee: base.dispatchFee, dispatchFreeKm: base.dispatchFreeKm, returnFee: base.dispatchFee, returnFreeKm: base.dispatchFreeKm,
+    longDistanceMaxKm: null, longDistanceOverchargeRate: null };
+});
+function officeCounts(rows) {
+  const counts = { All: rows.length, Tokyo: 0, Osaka: 0, Nagoya: 0, Sapporo: 0 };
+  rows.forEach((r) => counts[r.office]++);
+  return counts;
+}
+
+/* ---------------- small shared components ---------------- */
+function Toggle({ available, onToggle, small }) {
+  return (
+    <button type="button" role="switch" aria-checked={available} onClick={onToggle}
+      className={`relative inline-flex shrink-0 cursor-pointer rounded-full transition-colors ${small ? "h-[14px] w-[26px]" : "h-6 w-11"} ${available ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+      <span className={`pointer-events-none inline-block rounded-full bg-white shadow transition-transform ${small ? "h-3 w-3 translate-y-[1px]" : "h-5 w-5 translate-y-0.5"} ${available ? (small ? "translate-x-[13px]" : "translate-x-[22px]") : (small ? "translate-x-[1px]" : "translate-x-0.5")}`} />
+    </button>
+  );
+}
+function ConfirmDialog({ title, description, confirmLabel, onCancel, onConfirm }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+      <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={{ background: "var(--bg-card)" }}>
+        <h3 className="text-base font-bold" style={{ color: "var(--text-1)" }}>{title}</h3>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-2)" }}>{description}</p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button type="button" onClick={onCancel} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+          <button type="button" onClick={onConfirm} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700">{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function ModalShell({ title, onClose, children, footer, maxWidth = "max-w-lg" }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}
+        className={`flex max-h-[calc(100vh-2rem)] w-full ${maxWidth} flex-col overflow-hidden rounded-2xl shadow-2xl`} style={{ background: "var(--bg-card)" }}>
+        <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border)" }}>
+          <h2 className="text-base font-bold" style={{ color: "var(--text-1)" }}>{title}</h2>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition hover:bg-black/5" style={{ color: "var(--text-3)" }}><IconX size={18} /></button>
+        </div>
+        <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex items-center justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)" }}>{footer}</div>
+      </div>
+    </div>
+  );
+}
+const fieldLabel = "mb-1 block text-[11px] font-semibold uppercase tracking-wide";
+const fieldBox = "w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400";
+function Field({ label, children }) {
+  return <div><p className={fieldLabel} style={{ color: "var(--text-3)" }}>{label}</p>{children}</div>;
+}
+function ChipGroup({ options, value, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <button key={o} type="button" onClick={() => onChange(o)}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${value === o ? "border-[#121621] bg-[#121621] text-white" : "hover:bg-black/5"}`}
+          style={value === o ? {} : { borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}>
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- Map Location Picker (ported from components/booking/MapLocationPicker.tsx) ---------------- */
+/* Static-image map is replaced with an inline gradient + grid pattern (no external image hosts allowed). */
+const MAP_PICKER_TRIGGER_STYLES = {
+  dark: { empty: "border-white/10 bg-white/5 text-white/25 hover:border-white/20 hover:bg-white/10 hover:text-white/45", filled: "border-emerald-400 bg-emerald-500/90 text-white hover:bg-emerald-500" },
+  light: { empty: "border-gray-200 bg-gray-50 text-gray-300 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-500", filled: "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600" },
+};
+function MapLocationPicker({ value, onChange, label, theme = "dark", size = "default" }) {
+  const [open, setOpen] = useState(false);
+  const styles = MAP_PICKER_TRIGGER_STYLES[theme];
+  const compact = size === "compact";
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}
+        title={value ? `Edit map location: ${value.title}` : `Set map location for ${label}`}
+        aria-label={value ? `Edit map location for ${label}` : `Add map location for ${label}`}
+        className={`flex shrink-0 items-center justify-center rounded-lg border transition ${compact ? "h-9 w-9 self-end" : "w-11 flex-col self-stretch rounded-xl"} ${value ? styles.filled : styles.empty}`}>
+        <IconMapPin size={16} style={value ? { fill: "currentColor", fillOpacity: 0.18 } : undefined} />
+        {!compact && <span className="mt-1 text-[9px] font-medium uppercase tracking-wide">{value ? "Pin" : "Map"}</span>}
+      </button>
+      {open && (
+        <MapLocationModal label={label} initial={value} theme={theme} onClose={() => setOpen(false)}
+          onSave={(loc) => { onChange(loc); setOpen(false); }} />
+      )}
+    </>
+  );
+}
+function MapLocationModal({ label, initial, theme, onClose, onSave }) {
+  const [query, setQuery] = useState(initial?.title ?? "");
+  const [selected, setSelected] = useState(initial);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestions = searchMapLocations(query);
+  const isLight = theme === "light";
+  const displayLocation = selected ?? { title: query || "Search for a location", address: "Select an address from the suggestions below" };
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className={`w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl ${isLight ? "border-gray-200 bg-white" : "border-white/20 bg-slate-900/95 backdrop-blur-xl"}`} onClick={(e) => e.stopPropagation()}>
+        <div className={`flex items-center justify-between border-b px-4 py-3 ${isLight ? "border-gray-100" : "border-white/10"}`}>
+          <p className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-white"}`}>{label}</p>
+          <button type="button" onClick={onClose} className={`rounded-lg p-1.5 ${isLight ? "text-gray-400 hover:bg-gray-100 hover:text-gray-600" : "text-white/50 hover:bg-white/10 hover:text-white"}`}><IconX size={16} /></button>
+        </div>
+        <div className="p-4">
+          <div className="relative">
+            <div className={`flex items-center gap-3 rounded-full border px-4 py-3 ${isLight ? "border-gray-200 bg-gray-50" : "border-white/15 bg-white/5"}`}>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isLight ? "bg-white" : "bg-white/10"}`}><IconMapPin size={16} className="text-[#FACC15]" /></span>
+              <input type="text" value={query}
+                onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setSelected(null); }}
+                onFocus={() => setShowSuggestions(true)} placeholder="Search for a location..."
+                className={`min-w-0 flex-1 bg-transparent text-sm outline-none ${isLight ? "text-gray-900 placeholder:text-gray-400" : "text-white placeholder:text-white/35"}`} />
+              <IconSearch size={16} className={isLight ? "text-gray-400" : "text-white/40"} />
+            </div>
+            {showSuggestions && suggestions.length > 0 && (
+              <ul className={`absolute left-0 right-0 top-full z-10 mt-2 max-h-60 overflow-y-auto rounded-xl border shadow-xl ${isLight ? "border-gray-200 bg-white" : "border-white/15 bg-slate-900"}`}>
+                {suggestions.map((loc) => (
+                  <li key={`${loc.title}-${loc.address}`}>
+                    <button type="button" onClick={() => { setQuery(loc.title); setSelected(loc); setShowSuggestions(false); }}
+                      className={`flex w-full gap-3 px-4 py-3 text-left transition ${isLight ? "hover:bg-gray-50" : "hover:bg-white/5"}`}>
+                      <IconMapPin size={16} className={`mt-0.5 shrink-0 ${isLight ? "text-gray-400" : "text-white/40"}`} />
+                      <div className="min-w-0">
+                        <p className={`truncate text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{loc.title}</p>
+                        <p className={`truncate text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>{loc.address}</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className={`relative mt-4 overflow-hidden rounded-xl border ${isLight ? "border-gray-200" : "border-white/10"}`}>
+            <div className="h-52" style={{ background: "repeating-linear-gradient(45deg, #dce3ea 0 2px, #eef1f5 2px 36px)" }} />
+            <div className={`absolute inset-0 ${isLight ? "bg-white/20" : "bg-slate-900/30"}`} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <IconMapPin size={40} className="text-red-500 drop-shadow-lg" style={{ fill: "currentColor" }} />
+                <span className={`absolute -bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-[10px] backdrop-blur-sm ${isLight ? "bg-gray-900/90 text-white/80" : "bg-slate-900/90 text-white/80"}`}>
+                  <IconMapPin size={12} className="text-[#FACC15]" />
+                  Click to enable pin drag
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className={`mt-3 rounded-lg px-3 py-2 ${isLight ? "bg-gray-50" : "bg-white/5"}`}>
+            <p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{displayLocation.title}</p>
+            <p className={`mt-0.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>{displayLocation.address}</p>
+          </div>
+        </div>
+        <div className={`grid grid-cols-2 gap-3 border-t p-4 ${isLight ? "border-gray-100" : "border-white/10"}`}>
+          <button type="button" onClick={onClose} className={`rounded-xl border py-3 text-sm font-medium transition ${isLight ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50" : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"}`}>Cancel</button>
+          <button type="button" disabled={!selected} onClick={() => selected && onSave(selected)}
+            className={`rounded-xl border py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${isLight ? "border-gray-800 bg-gray-900 text-white hover:bg-gray-800" : "border-white/15 bg-slate-800/80 text-white hover:bg-slate-700/80"}`}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Route Map (ported from components/booking/RouteMap.tsx) ---------------- */
+function hashRouteName(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 9973; return h; }
+function RouteMap({ waypoints }) {
+  const points = [
+    { name: waypoints.pickup || "Pick-up", kind: "start" },
+    ...waypoints.stopovers.map((s) => ({ name: s.location || "Stop", kind: "stop" })),
+    { name: waypoints.dropoff || "Drop-off", kind: "end" },
+  ];
+  const n = points.length;
+  const coords = points.map((p, i) => ({ x: n === 1 ? 50 : 14 + (72 * i) / (n - 1), y: 34 + (hashRouteName(p.name + i) % 34) }));
+  const polyline = coords.map((c) => `${c.x},${c.y}`).join(" ");
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/80 px-3.5 py-2.5">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Route overview</p>
+        <p className="text-xs text-gray-400">{n} points · schematic order, not to scale</p>
+      </div>
+      <div className="relative h-[260px]" style={{ backgroundColor: "#f7f8fa", backgroundImage: "linear-gradient(#e9ebef 1px, transparent 1px), linear-gradient(90deg, #e9ebef 1px, transparent 1px)", backgroundSize: "32px 32px" }}>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          <polyline points={polyline} fill="none" stroke="#121621" strokeWidth={0.4} strokeDasharray="1.6 1.2" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {points.map((p, i) => {
+          const c = coords[i];
+          const color = p.kind === "start" ? "#16a34a" : p.kind === "end" ? "#dc2626" : "#121621";
+          const marker = p.kind === "start" ? "A" : p.kind === "end" ? "B" : String(i);
+          return (
+            <div key={`${p.name}-${i}`} className="absolute flex max-w-[132px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5" style={{ left: `${c.x}%`, top: `${c.y}%` }}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white shadow" style={{ background: color }}>{marker}</span>
+              <span className="max-w-[132px] truncate rounded-md border border-gray-200 bg-white/95 px-1.5 py-0.5 text-[11px] font-semibold text-gray-900">{p.name}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 bg-gray-50/80 px-3.5 py-2.5 text-[11px] text-gray-400">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-600" />Start</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#121621]" />Stopover</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-600" />End</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Vehicle Pricing Tables (ported from components/booking/*VehiclePricingTable.tsx) ---------------- */
+function pricingRowKey(row) { return `${row.vehicleType}::${row.vehicleName}`; }
+function loadSightseeingRowsForOffice(office) {
+  return SIGHTSEEING_PRICE_SEED.filter((row) => row.office === office && row.available).map((row) => ({
+    vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, halfDayPrice: row.halfDayPrice, fullDayPrice: row.fullDayPrice, custom: false, customPrice: "",
+  }));
+}
+function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, locked = false }) {
+  const isHalfDay = durationTier.startsWith("Half Day");
+  const applicableLabel = isHalfDay ? "Half Day" : "Full Day";
+  const stale = pricing !== null && pricing.office !== officeLocation;
+  const activeOffice = pricing?.office ?? officeLocation;
+  const activeRows = pricing?.rows ?? loadSightseeingRowsForOffice(officeLocation);
+  const handleReload = () => {
+    const freshRows = loadSightseeingRowsForOffice(officeLocation);
+    const prevByKey = new Map(activeRows.map((r) => [pricingRowKey(r), r]));
+    const rows = freshRows.map((row) => { const prev = prevByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
+    onChange({ office: officeLocation, rows });
+  };
+  const toggleCustom = (index) => {
+    const rows = [...activeRows]; const row = rows[index]; const willBeOn = !row.custom;
+    rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(isHalfDay ? row.halfDayPrice : row.fullDayPrice) : "" };
+    onChange({ office: activeOffice, rows });
+  };
+  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, rows }); };
+  const overrideCount = activeRows.filter((r) => r.custom).length;
+  const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
+  return (
+    <div className="relative rounded-xl border border-gray-200 p-4">
+      <button type="button" title="Reload from CMS" disabled={locked} onClick={handleReload}
+        className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 transition hover:border-gray-900 hover:text-gray-900 disabled:cursor-default disabled:opacity-40">
+        <IconRefresh size={14} />
+      </button>
+      <div className="flex items-start justify-between gap-4 pr-9">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-bold text-gray-800"><IconDollar size={16} className="text-gray-500" />Vehicle Pricing</p>
+          <p className="mt-1 text-xs text-gray-500">Sightseeing category · {officeLocation} office · available vehicles only</p>
+        </div>
+        {pricing && !locked && <button type="button" onClick={() => onChange(null)} className="h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-600 transition hover:bg-gray-50">Clear</button>}
+      </div>
+      {stale && <div className="mt-3.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Loaded for the {pricing.office} office — this template is now set to {officeLocation}. Reload to refresh the list.</div>}
+      {activeRows.length === 0 ? (
+        <div className="mt-3.5 rounded-[10px] border border-dashed border-gray-200 bg-gray-50/60 p-5 text-center text-xs text-gray-500">No available Sightseeing vehicles found for {officeLocation}.</div>
+      ) : (
+        <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
+          <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+            <thead><tr className="border-b border-gray-200 bg-gray-50">
+              {["Vehicle Type","Vehicle Name","Owner","Half Day ¥","Full Day ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+            </tr></thead>
+            <tbody>
+              {activeRows.map((row, i) => {
+                const invalid = row.custom && !row.customPrice.trim();
+                return (
+                  <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
+                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
+                    <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
+                    <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
+                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{row.halfDayPrice}</td>
+                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{row.fullDayPrice}</td>
+                    <td className="px-2 py-[9px]">
+                      <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
+                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
+                        {row.custom ? <>ON<span className="ml-1 h-4 w-4 rounded-full bg-white" /></> : <><span className="mr-1 h-4 w-4 rounded-full bg-white" />OFF</>}
+                      </button>
+                    </td>
+                    <td className="px-2 py-[9px]">
+                      {!row.custom ? <span className="text-gray-300">—</span> : (
+                        <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
+                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-3 py-[9px]">
+            <p className="text-xs text-gray-500">{activeRows.length} available vehicles from Pricing CMS · {overrideCount} custom override{overrideCount === 1 ? "" : "s"}{missingCount > 0 && ` · ${missingCount} missing a price`}</p>
+            <p className="whitespace-nowrap text-xs font-semibold text-gray-900">{applicableLabel} ¥ applies to this template ({durationTier})</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function loadAirportRowsForOfficeAirport(office, airport) {
+  return AIRPORT_PRICE_SEED.filter((row) => row.office === office && row.available).flatMap((row) => {
+    const leg = row.legs.find((l) => l.airport === airport);
+    if (!leg) return [];
+    return [{ vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: leg.fixedFee, distanceCapKm: leg.distanceCapKm ?? 0, excessRatePerKm: leg.excessRatePerKm ?? 0, custom: false, customPrice: "" }];
+  });
+}
+function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange, locked = false }) {
+  const stale = pricing !== null && (pricing.office !== officeLocation || pricing.airport !== airport);
+  const activeOffice = pricing?.office ?? officeLocation;
+  const activeAirport = pricing?.airport ?? airport;
+  const activeRows = pricing?.rows ?? loadAirportRowsForOfficeAirport(officeLocation, airport);
+  const handleReload = () => {
+    const freshRows = loadAirportRowsForOfficeAirport(officeLocation, airport);
+    const prevByKey = new Map(activeRows.map((r) => [pricingRowKey(r), r]));
+    const rows = freshRows.map((row) => { const prev = prevByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
+    onChange({ office: officeLocation, airport, rows });
+  };
+  const toggleCustom = (index) => {
+    const rows = [...activeRows]; const row = rows[index]; const willBeOn = !row.custom;
+    rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(row.fixedFee) : "" };
+    onChange({ office: activeOffice, airport: activeAirport, rows });
+  };
+  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, airport: activeAirport, rows }); };
+  const overrideCount = activeRows.filter((r) => r.custom).length;
+  const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
+  return (
+    <div className="relative rounded-xl border border-gray-200 p-4">
+      <button type="button" title="Reload from CMS" disabled={locked} onClick={handleReload}
+        className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 transition hover:border-gray-900 hover:text-gray-900 disabled:cursor-default disabled:opacity-40">
+        <IconRefresh size={14} />
+      </button>
+      <div className="flex items-start justify-between gap-4 pr-9">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-bold text-gray-800"><IconDollar size={16} className="text-gray-500" />Vehicle Pricing</p>
+          <p className="mt-1 text-xs text-gray-500">Airport category · {officeLocation} office · {airportDisplayName(airport)} · available vehicles only</p>
+        </div>
+        {pricing && !locked && <button type="button" onClick={() => onChange(null)} className="h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-600 transition hover:bg-gray-50">Clear</button>}
+      </div>
+      {stale && <div className="mt-3.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Loaded for {pricing.office} office · {airportDisplayName(pricing.airport)} — this template is now set to {officeLocation} · {airportDisplayName(airport)}. Reload to refresh the list.</div>}
+      {activeRows.length === 0 ? (
+        <div className="mt-3.5 rounded-[10px] border border-dashed border-gray-200 bg-gray-50/60 p-5 text-center text-xs text-gray-500">No available Airport vehicles found for {officeLocation} · {airportDisplayName(airport)}.</div>
+      ) : (
+        <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
+          <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
+            <thead><tr className="border-b border-gray-200 bg-gray-50">
+              {["Vehicle Type","Vehicle Name","Owner","Fixed Fee ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+            </tr></thead>
+            <tbody>
+              {activeRows.map((row, i) => {
+                const invalid = row.custom && !row.customPrice.trim();
+                return (
+                  <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
+                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
+                    <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
+                    <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
+                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{row.fixedFee}</td>
+                    <td className="px-2 py-[9px]">
+                      <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
+                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
+                        {row.custom ? <>ON<span className="ml-1 h-4 w-4 rounded-full bg-white" /></> : <><span className="mr-1 h-4 w-4 rounded-full bg-white" />OFF</>}
+                      </button>
+                    </td>
+                    <td className="px-2 py-[9px]">
+                      {!row.custom ? <span className="text-gray-300">—</span> : (
+                        <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
+                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-3 py-[9px]">
+            <p className="text-xs text-gray-500">{activeRows.length} available vehicles from Pricing CMS · {overrideCount} custom override{overrideCount === 1 ? "" : "s"}{missingCount > 0 && ` · ${missingCount} missing a price`}</p>
+            <p className="whitespace-nowrap text-xs font-semibold text-gray-900">Fixed fee ¥ applies to this template ({airportDisplayName(airport)})</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Sidebar ---------------- */
+const NAV_ITEMS = [
+  { id: "orders", label: "Orders", icon: IconClipboard },
+  { id: "pricing-cms", label: "Pricing CMS", icon: IconDollar },
+  { id: "dispatch-board", label: "Dispatch Board", icon: IconLayout },
+  { id: "tour-catalog", label: "Catalog", icon: IconMap },
+];
+function Sidebar({ activeView, onNavigate }) {
+  const { debugMode, toggle } = useDebugMode();
+  return (
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-56 flex-col text-white" style={{ background: "var(--sidebar-bg)" }}>
+      <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FACC15] text-sm font-black text-[#121621]">ZG</div>
+        <div>
+          <div className="text-sm font-bold tracking-tight">Zen Go</div>
+          <div className="text-[10px] font-medium uppercase tracking-widest text-white/40">Admin Console</div>
+        </div>
+      </div>
+      <nav className="flex-1 px-3 py-4">
+        <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white/30">Navigation</p>
+        <ul className="space-y-0.5">
+          {NAV_ITEMS.map(({ id, label, icon: I }) => {
+            const isActive = activeView === id;
+            return (
+              <li key={id}>
+                <button type="button" onClick={() => onNavigate(id)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${isActive ? "border-l-[3px] border-[#FACC15] bg-[#FACC15]/[0.12] pl-[9px] font-semibold text-[#FACC15]" : "border-l-[3px] border-transparent text-white/60 hover:bg-white/5 hover:text-white"}`}>
+                  <I size={16} className="shrink-0" />
+                  {label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      <div className="border-t border-white/10 px-3 py-3">
+        <button type="button" onClick={toggle} aria-pressed={debugMode}
+          title={debugMode ? "Debug mode on — every field shows its Model.Field" : "Turn on debug mode"}
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${debugMode ? "bg-emerald-500/15 text-emerald-400" : "text-white/40 hover:bg-white/5 hover:text-white/70"}`}>
+          <IconBug size={16} className="shrink-0" />
+          Debug Mode
+          <span className={`ml-auto inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${debugMode ? "bg-emerald-500" : "bg-white/15"}`}>
+            <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${debugMode ? "translate-x-[13px]" : "translate-x-0.5"}`} />
+          </span>
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+/* ---------------- Tour Catalog ---------------- */
+const COLUMN_DB_FIELDS = { name: "trip_name", id: "tour_id", serviceType: "service_type", office: "office_id", duration: "duration_tier", start: "start_time", views: "viewed_count", books: "booked_count", price: "price", status: "status" };
+const COLUMN_LABELS = { name: "Name", id: "ID", serviceType: "Service Type", office: "Office", duration: "Duration", start: "Start", views: "Clicks", books: "Booked", price: "Price", status: "Status" };
+const SORT_CONFIG = {
+  name: { type: "string", getValue: (t) => t.tripName || null, defaultDir: "asc" },
+  id: { type: "string", getValue: (t) => t.id, defaultDir: "asc" },
+  serviceType: { type: "string", getValue: (t) => t.serviceType, defaultDir: "asc" },
+  office: { type: "string", getValue: (t) => t.officeLocation, defaultDir: "asc" },
+  duration: { type: "string", getValue: (t) => t.durationTier, defaultDir: "asc" },
+  start: { type: "string", getValue: (t) => (t.serviceType === "Airport" ? null : t.startTime), defaultDir: "asc" },
+  views: { type: "number", getValue: (t) => t.viewedCount, defaultDir: "desc" },
+  books: { type: "number", getValue: (t) => t.bookedCount, defaultDir: "desc" },
+  price: { type: "number", getValue: (t) => t.price, defaultDir: "desc" },
+  status: { type: "number", getValue: (t) => (t.status === "active" ? 1 : 0), defaultDir: "desc" },
+};
+const COLUMN_ORDER = ["name", "id", "serviceType", "office", "duration", "start", "views", "books", "price", "status"];
+
+function SortIcon({ active, dir }) {
+  if (!active) return <IconArrowUpDown size={12} className="text-gray-300" />;
+  return dir === "asc" ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />;
+}
+
+function TourCatalogView({ tours, onToggleStatus, onEdit, onAddTour, onRefresh, onDelete, onOpenBooking }) {
+  const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [officeFilter, setOfficeFilter] = useState([]);
+  const [officeMenuOpen, setOfficeMenuOpen] = useState(false);
+  const [serviceTypeFilter, setServiceTypeFilter] = useState([]);
+  const [serviceTypeMenuOpen, setServiceTypeMenuOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [visibleColumns, setVisibleColumns] = useState(() => Object.fromEntries(["id","serviceType","office","duration","start","views","books","price","status"].map(k => [k, true])));
+  const [columnMenuOpen, setColumnMenuOpen] = useState(false);
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+
+  const toggleOfficeFilter = (o) => setOfficeFilter((p) => p.includes(o) ? p.filter(x => x !== o) : [...p, o]);
+  const toggleServiceTypeFilter = (s) => setServiceTypeFilter((p) => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
+  const officeFilterLabel = officeFilter.length === 0 ? "All offices" : officeFilter.length === 1 ? officeFilter[0] : `${officeFilter.length} offices`;
+  const serviceTypeFilterLabel = serviceTypeFilter.length === 0 ? "All service types" : serviceTypeFilter.length === 1 ? serviceTypeFilter[0] : `${serviceTypeFilter.length} service types`;
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(SORT_CONFIG[key].defaultDir); }
+  };
+  const handleRefreshClick = () => {
+    setSearch(""); setOfficeFilter([]); setServiceTypeFilter([]); setStatusFilter("all"); setSortKey(null); setSortDir("asc");
+    onRefresh();
+  };
+
+  const filtered = useMemo(() => tours.filter((t) => {
+    const q = search.toLowerCase();
+    const matchesSearch = !q || t.id.toLowerCase().includes(q) || t.tripName.toLowerCase().includes(q) || (t.officeLocation||"").toLowerCase().includes(q);
+    const matchesOffice = officeFilter.length === 0 || (t.officeLocation && officeFilter.includes(t.officeLocation));
+    const matchesServiceType = serviceTypeFilter.length === 0 || (t.serviceType && serviceTypeFilter.includes(t.serviceType));
+    const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+    return matchesSearch && matchesOffice && matchesServiceType && matchesStatus;
+  }), [tours, search, officeFilter, serviceTypeFilter, statusFilter]);
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const config = SORT_CONFIG[sortKey];
+    return [...filtered].sort((a, b) => {
+      const va = config.getValue(a), vb = config.getValue(b);
+      const aEmpty = config.type === "number" ? va == null : !va;
+      const bEmpty = config.type === "number" ? vb == null : !vb;
+      if (aEmpty && bEmpty) return 0;
+      if (aEmpty) return 1;
+      if (bEmpty) return -1;
+      const cmp = config.type === "number" ? va - vb : String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: "base" });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortKey, sortDir]);
+
+  const activeCount = tours.filter((t) => t.status === "active").length;
+  const orderedCols = COLUMN_ORDER.filter((k) => k === "name" || visibleColumns[k]);
+
+  function renderCell(tour, key) {
+    const active = tour.status === "active";
+    switch (key) {
+      case "name": return <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-1)" }}>{tour.tripName || "Untitled template"}</span>;
+      case "id": return <span className="mono text-xs font-medium" style={{ color: "var(--text-3)" }}>{tour.id}</span>;
+      case "serviceType": return <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${serviceTypeBadge(tour.serviceType)}`}>{tour.serviceType || "—"}</span>;
+      case "office": return <span style={{ color: "var(--text-2)" }}>{tour.officeLocation}</span>;
+      case "duration": return tour.durationTier ? <span className="inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-subtle)" }}>{tour.durationTier}</span> : <span style={{ color: "var(--text-3)" }}>—</span>;
+      case "start": return tour.serviceType === "Airport" ? <span style={{ color: "var(--text-3)" }}>—</span> : <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.startTime}</span>;
+      case "views": return <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.viewedCount}</span>;
+      case "books": return <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.bookedCount}</span>;
+      case "price": return <span className="font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(tour.price)}</span>;
+      case "status": return <Toggle small available={active} onToggle={(e) => { onToggleStatus(tour.id); }} />;
+      default: return null;
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <h1 className="text-[26px] font-bold tracking-tight" style={{ color: "var(--text-1)" }}>Catalog</h1>
+          <p className="mt-1.5 text-sm" style={{ color: "var(--text-3)" }}>{tours.length} templates · {activeCount} active · {tours.length - activeCount} inactive</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" title="Refresh" onClick={handleRefreshClick}
+            className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}>
+            <IconRefresh size={16} />
+          </button>
+          <button type="button" onClick={onAddTour}
+            className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-[#FACC15] px-[18px] text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
+            <IconPlus size={16} /> Add Template
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3.5 shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+        <div className="relative max-w-[340px] flex-1 min-w-[220px]">
+          <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
+          <input type="text" placeholder="Search reference, trip name, office…" value={search} onChange={(e) => setSearch(e.target.value)}
+            className="h-[38px] w-full rounded-lg border pl-9 pr-3 text-sm outline-none focus:border-gray-400"
+            style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-1)" }} />
+        </div>
+        <div className="h-6 w-px" style={{ background: "var(--border)" }} />
+        <div className="relative">
+          <button type="button" onClick={() => setOfficeMenuOpen((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${officeFilter.length > 0 ? "bg-[#121621] text-white" : "hover:bg-black/10"}`}
+            style={officeFilter.length > 0 ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>
+            {officeFilterLabel} <IconChevronDown size={14} />
+          </button>
+          {officeMenuOpen && (
+            <div className="absolute left-0 top-full z-20 mt-1.5 w-44 rounded-lg border p-1.5 shadow-lg" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+              <button type="button" onClick={() => setOfficeFilter([])} className="mb-1 flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm font-medium hover:bg-black/5" style={{ color: "var(--text-3)" }}>
+                All offices {officeFilter.length === 0 && <IconCheck size={14} />}
+              </button>
+              <div className="my-1 h-px" style={{ background: "var(--border-soft)" }} />
+              {OFFICE_LOCATIONS.map((o) => (
+                <label key={o} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm hover:bg-black/5" style={{ color: "var(--text-2)" }}>
+                  <input type="checkbox" checked={officeFilter.includes(o)} onChange={() => toggleOfficeFilter(o)} /> {o}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="h-6 w-px" style={{ background: "var(--border)" }} />
+        <div className="relative">
+          <button type="button" onClick={() => setServiceTypeMenuOpen((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${serviceTypeFilter.length > 0 ? "bg-[#121621] text-white" : "hover:bg-black/10"}`}
+            style={serviceTypeFilter.length > 0 ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>
+            {serviceTypeFilterLabel} <IconChevronDown size={14} />
+          </button>
+          {serviceTypeMenuOpen && (
+            <div className="absolute left-0 top-full z-20 mt-1.5 w-48 rounded-lg border p-1.5 shadow-lg" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+              <button type="button" onClick={() => setServiceTypeFilter([])} className="mb-1 flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm font-medium hover:bg-black/5" style={{ color: "var(--text-3)" }}>
+                All service types {serviceTypeFilter.length === 0 && <IconCheck size={14} />}
+              </button>
+              <div className="my-1 h-px" style={{ background: "var(--border-soft)" }} />
+              {SERVICE_TYPES.map((s) => (
+                <label key={s} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm hover:bg-black/5" style={{ color: "var(--text-2)" }}>
+                  <input type="checkbox" checked={serviceTypeFilter.includes(s)} onChange={() => toggleServiceTypeFilter(s)} /> {s}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="h-6 w-px" style={{ background: "var(--border)" }} />
+        <div className="relative inline-flex items-center rounded-full p-1 text-xs font-semibold" style={{ background: "var(--bg-subtle)" }}>
+          <span className="absolute inset-y-1 w-[58px] rounded-full bg-[#121621] shadow-sm transition-transform duration-200 ease-out"
+            style={{ transform: `translateX(${statusFilter === "all" ? 0 : statusFilter === "active" ? 58 : 116}px)` }} />
+          {["all", "active", "inactive"].map((st) => (
+            <button key={st} type="button" onClick={() => setStatusFilter(st)}
+              className="relative z-10 w-[58px] rounded-full py-1.5 text-center transition-colors"
+              style={{ color: statusFilter === st ? "#fff" : "var(--text-3)" }}>
+              {st === "all" ? "All" : st === "active" ? "Active" : "Inactive"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+              {orderedCols.map((key) => (
+                <th key={key} aria-sort={sortKey === key ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                  className="select-none whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+                  <button type="button" onClick={() => handleSort(key)} className="inline-flex items-center gap-1 transition hover:opacity-70">
+                    {COLUMN_LABELS[key]} <SortIcon active={sortKey === key} dir={sortDir} />
+                  </button>
+                </th>
+              ))}
+              <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Preview</th>
+              <th className="w-8 px-1 py-2.5" />
+              <th className="relative w-8 px-1 py-2.5">
+                <button type="button" title="Show/hide columns" onClick={() => setColumnMenuOpen((v) => !v)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-black/10" style={{ color: "var(--text-3)" }}>
+                  <IconSliders size={16} />
+                </button>
+                {columnMenuOpen && (
+                  <div className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-lg border p-1.5 text-left normal-case tracking-normal shadow-lg" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                    {COLUMN_ORDER.filter(k => k !== "name").map((k) => (
+                      <label key={k} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-normal hover:bg-black/5" style={{ color: "var(--text-2)" }}>
+                        <input type="checkbox" checked={!!visibleColumns[k]} onChange={() => setVisibleColumns((p) => ({ ...p, [k]: !p[k] }))} /> {COLUMN_LABELS[k]}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr><td colSpan={orderedCols.length + 3} className="px-4 py-14 text-center" style={{ color: "var(--text-3)" }}>No tours match your filters.</td></tr>
+            ) : sorted.map((tour) => (
+              <tr key={tour.id} onClick={() => onEdit(tour.id)} className="group cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                {orderedCols.map((key) => (
+                  <td key={key} className="px-4 py-3.5 align-top" onClick={key === "status" ? (e) => e.stopPropagation() : undefined}>
+                    <DebugField model="tour_templates" field={COLUMN_DB_FIELDS[key]}>{renderCell(tour, key)}</DebugField>
+                  </td>
+                ))}
+                <td className="px-4 py-3.5 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <button type="button" title="Open tour details page" onClick={(e) => { e.stopPropagation(); window.open(tour.previewLinks.tourDetails, "_blank", "noopener,noreferrer"); }} className="rounded p-1.5 text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-500/10"><IconGlobe size={16} /></button>
+                    <button type="button" title="Preview booking page" onClick={(e) => { e.stopPropagation(); onOpenBooking(tour); }} className="rounded p-1.5 text-violet-500 transition hover:bg-violet-50 dark:hover:bg-violet-500/10"><IconCalendarClock size={16} /></button>
+                  </div>
+                </td>
+                <td className="w-8 px-2 py-3.5">
+                  <button type="button" title="Delete template" onClick={(e) => { e.stopPropagation(); setDeleteTarget(tour); }} className="rounded p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><IconTrash size={16} /></button>
+                </td>
+                <td className="w-8" />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {deleteTarget && (
+        <ConfirmDialog title="Delete this template?"
+          description={`"${deleteTarget.tripName || "Untitled template"}" (${deleteTarget.id}) will be permanently removed from the catalog. This can't be undone.`}
+          confirmLabel="Delete template" onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => { onDelete(deleteTarget.id); setDeleteTarget(null); }} />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Tour Template Modal (ported from components/TourTemplateModal.tsx) ---------------- */
+const EDIT_ROUTE_ROW_GRID = "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem_2.75rem_2rem] sm:items-end";
+function TTFieldLabel({ children }) {
+  return <label className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{children}</label>;
+}
+function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDelete, onOpenBooking }) {
+  const [draft, setDraft] = useState(null);
+  const [baseline, setBaseline] = useState(null);
+  const [mode, setMode] = useState("view");
+  const [history, setHistory] = useState([]);
+  const [routeEditing, setRouteEditing] = useState(false);
+  const [routeCopy, setRouteCopy] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [routeMapOpen, setRouteMapOpen] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const fieldSnapshotRef = useRef(null);
+
+  useEffect(() => {
+    if (tour) {
+      const clone = (v) => JSON.parse(JSON.stringify(v));
+      setDraft(clone(tour));
+      setBaseline(isNew ? null : clone(tour));
+      setMode(isNew ? "edit" : "view");
+      setHistory([]);
+      setRouteEditing(isNew);
+      setRouteCopy(isNew ? clone(tour.waypoints) : null);
+      setRouteMapOpen(false);
+      setShowHidden(false);
+      setSaveError(null);
+    }
+    // eslint-disable-next-line
+  }, [tour && tour.id, isNew]);
+
+  if (!tour || !draft) return null;
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  const locked = mode === "view";
+
+  const hasCustomOverride = !!draft.vehiclePricing?.rows.some((r) => r.custom) || !!draft.airportVehiclePricing?.rows.some((r) => r.custom);
+  const hasEdits = history.length > 0 || hasCustomOverride;
+
+  const update = (patch) => setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
+  const updateRouteCopy = (patch) => setRouteCopy((prev) => (prev ? { ...prev, ...patch } : prev));
+  const commit = (label, patch) => {
+    setHistory((h) => [...h, { label, snapshot: clone(draft) }]);
+    setDraft({ ...draft, ...patch });
+    setSaveError(null);
+  };
+  const withSuggestedPrice = (patch) => {
+    if (draft.price !== null) return patch;
+    const nextOffice = patch.officeLocation ?? draft.officeLocation;
+    const nextDuration = patch.durationTier ?? draft.durationTier;
+    if (!nextOffice || !nextDuration) return patch;
+    return { ...patch, price: suggestedPriceForOffice(nextOffice, nextDuration.startsWith("Half Day")) };
+  };
+  const applyPickupResolution = (patch, resolved) => {
+    if (routeEditing) {
+      setRouteCopy((prev) => (prev ? { ...prev, pickup: resolved.pickup, pickupMapLocation: resolved.pickupMapLocation } : prev));
+      return patch;
+    }
+    return { ...patch, waypoints: { ...draft.waypoints, pickup: resolved.pickup, pickupMapLocation: resolved.pickupMapLocation } };
+  };
+  const selectServiceType = (type) => {
+    const newId = draftIdForServiceType(type);
+    let patch = { serviceType: type, id: newId, reference: newId, price: null, vehiclePricing: null, airportVehiclePricing: null };
+    if (type === "Sightseeing Charter") {
+      patch = { ...patch, airport: null };
+    } else {
+      const resolved = resolveAirportPickup(draft.officeLocation);
+      patch = { ...patch, durationTier: null, airport: resolved.airport };
+      patch = applyPickupResolution(patch, resolved);
+    }
+    commit("Service type selected", patch);
+  };
+  const selectOffice = (loc) => {
+    let patch = withSuggestedPrice({ officeLocation: loc });
+    if (draft.serviceType === "Airport") {
+      const resolved = resolveAirportPickup(loc);
+      patch = { ...patch, airport: resolved.airport };
+      patch = applyPickupResolution(patch, resolved);
+    }
+    commit("Office changed", patch);
+  };
+  const selectAirport = (airport) => {
+    const patch = applyPickupResolution({ airport }, { pickup: airportDisplayName(airport), pickupMapLocation: AIRPORT_MAP_LOCATIONS[airport] ?? null });
+    commit("Airport selected", patch);
+  };
+  const toggleStatusNow = () => {
+    const next = draft.status === "active" ? "inactive" : "active";
+    setDraft((prev) => (prev ? { ...prev, status: next } : prev));
+    if (!isNew) {
+      setBaseline((prev) => (prev ? { ...prev, status: next } : prev));
+      onToggleStatus(tour.id);
+    }
+  };
+  const undo = () => {
+    if (history.length === 0) return;
+    const last = history[history.length - 1];
+    setHistory(history.slice(0, -1));
+    setDraft(last.snapshot);
+    setRouteEditing(false);
+    setRouteCopy(null);
+    setSaveError(null);
+  };
+  const enterEdit = () => setMode("edit");
+  const cancelEdits = () => {
+    if (mode === "view" || !baseline) { onClose(); return; }
+    setDraft(clone(baseline));
+    setMode("view");
+    setHistory([]);
+    setRouteEditing(false);
+    setRouteCopy(null);
+    setSaveError(null);
+  };
+  const editRoute = () => { setMode("edit"); setRouteEditing(true); setRouteCopy(clone(draft.waypoints)); };
+  const discardRoute = () => { setRouteEditing(false); setRouteCopy(null); };
+  const applyRoute = () => {
+    if (!routeCopy) return;
+    const unchanged = JSON.stringify(draft.waypoints) === JSON.stringify(routeCopy);
+    if (unchanged) { setRouteEditing(false); setRouteCopy(null); setSaveError(null); return; }
+    const metrics = estimateRouteMetrics(routeCopy);
+    setHistory((h) => [...h, { label: "Route updated", snapshot: clone(draft) }]);
+    setDraft({ ...draft, waypoints: clone(routeCopy), startTime: routeCopy.pickupTime, routeDistanceKm: metrics?.distanceKm ?? null, routeDurationMins: metrics?.durationMins ?? null });
+    setRouteEditing(false);
+    setRouteCopy(null);
+    setSaveError(null);
+  };
+  const onFieldFocus = () => { fieldSnapshotRef.current = clone(draft); };
+  const onFieldBlur = () => {
+    const before = fieldSnapshotRef.current;
+    fieldSnapshotRef.current = null;
+    if (!before) return;
+    if (JSON.stringify(before) === JSON.stringify(draft)) return;
+    setHistory((h) => [...h, { label: "Field edited", snapshot: before }]);
+  };
+  const handleVehiclePricingChange = (pricing) => {
+    if (pricing === null && draft.vehiclePricing) commit("Vehicle prices cleared", { vehiclePricing: null });
+    else update({ vehiclePricing: pricing });
+  };
+  const handleAirportVehiclePricingChange = (pricing) => {
+    if (pricing === null && draft.airportVehiclePricing) commit("Vehicle prices cleared", { airportVehiclePricing: null });
+    else update({ airportVehiclePricing: pricing });
+  };
+  const handleSave = () => {
+    if (!draft.tripName.trim()) return setSaveError("Give the template a trip name before saving.");
+    if (!draft.serviceType) return setSaveError("Select a service type before saving.");
+    if (!draft.officeLocation) return setSaveError("Select an office location before saving.");
+    if (draft.serviceType === "Sightseeing Charter" && !draft.durationTier) return setSaveError("Select a duration tier before saving.");
+    if (draft.serviceType === "Airport" && !draft.airport) return setSaveError("Select an airport before saving.");
+    const hasMissingCustomPrice = draft.vehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim()) || draft.airportVehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim());
+    if (hasMissingCustomPrice) return setSaveError("Set a custom price for every vehicle with Custom turned on, or turn Custom off.");
+    setSaveError(null);
+    onSave({ ...draft, reference: draft.id, startTime: draft.waypoints.pickupTime });
+  };
+
+  const wp = routeEditing && routeCopy ? routeCopy : draft.waypoints;
+  const readyForPrice = draft.serviceType === "Sightseeing Charter" ? !!draft.officeLocation && !!draft.durationTier : draft.serviceType === "Airport" ? !!draft.officeLocation : false;
+  const canSave = !!draft.tripName.trim() && !!draft.serviceType && !!draft.officeLocation && (draft.serviceType === "Airport" ? !!draft.airport : !!draft.durationTier);
+  const dirty = baseline ? JSON.stringify(baseline) !== JSON.stringify(draft) : true;
+  const saveEnabled = canSave && dirty && hasEdits && !routeEditing;
+  const lastLabel = history.length ? history[history.length - 1].label : hasCustomOverride ? "Custom price set" : "";
+  const footerNote = saveError ? saveError : mode === "view" ? "Viewing — locked. Choose Edit template to make changes." : routeEditing ? "Editing route — choose Set route to apply it to this template." : hasEdits ? `${history.length || 1} unsaved change${(history.length || 1) === 1 ? "" : "s"} · last: ${lastLabel}` : "No changes yet.";
+  const footerNoteClass = saveError ? "font-medium text-red-600" : hasEdits && mode === "edit" ? "font-medium" : "";
+
+  const fieldClass = `w-full rounded-lg border px-3 py-2.5 text-sm outline-none ${locked ? "cursor-default" : "focus:border-gray-400"}`;
+  const numFieldClass = `w-full rounded-lg border px-3 py-2 text-sm outline-none ${locked ? "cursor-default" : "focus:border-gray-400"}`;
+  const smallFieldClass = numFieldClass;
+  const fieldStyle = locked ? { borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" } : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" };
+  const linkFieldClass = "w-full rounded-lg border px-3 py-2 text-xs font-medium outline-none";
+  const linkFieldStyle = locked ? { borderColor: "rgba(139,92,246,.25)", background: "rgba(139,92,246,.05)", color: "rgba(139,92,246,.6)" } : { borderColor: "rgba(139,92,246,.4)", background: "rgba(139,92,246,.08)", color: "#7c3aed" };
+
+  const routeRows = [
+    { badge: "Pick-up", tone: "green", name: draft.waypoints.pickup, meta: draft.serviceType === "Airport" ? "" : draft.waypoints.pickupTime, pin: draft.waypoints.pickupMapLocation },
+    ...draft.waypoints.stopovers.map((s, i) => ({ badge: `Stop ${i + 1}`, tone: "plain", name: s.location, meta: s.waitTime, pin: s.mapLocation })),
+    { badge: "Drop-off", tone: "red", name: draft.waypoints.dropoff, meta: "", pin: draft.waypoints.dropoffMapLocation },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-2 sm:p-8">
+      <div role="dialog" aria-modal="true" className="flex max-h-[calc(100vh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl shadow-2xl sm:max-h-[calc(100vh-2rem)]" style={{ background: "var(--bg-card)" }}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 border-b px-4 py-4 sm:px-6 sm:py-5" style={{ borderColor: "var(--border)" }}>
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span className="mono shrink-0 rounded-lg px-3 py-1 text-sm font-bold" style={{ background: "var(--bg-subtle)", color: "var(--text-1)" }}>{draft.id}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="truncate text-[17px] font-bold tracking-tight" style={{ color: "var(--text-1)" }}>{isNew ? "Create trip template" : draft.tripName || "Untitled template"}</h2>
+                <button type="button" role="switch" aria-checked={draft.status === "active"} title="Toggle active status" onClick={toggleStatusNow}
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition hover:opacity-80 ${draft.status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300"}`}>
+                  <span className={`h-2 w-2 rounded-full ${draft.status === "active" ? "bg-emerald-500" : "bg-gray-400"}`} />
+                  {draft.status === "active" ? "Active" : "Inactive"}
+                </button>
+              </div>
+              <p className="mt-0.5 truncate text-xs" style={{ color: "var(--text-3)" }}>
+                {draft.serviceType === "Sightseeing Charter" && draft.officeLocation
+                  ? `${draft.officeLocation} office · Sightseeing Charter${draft.durationTier ? ` · ${draft.durationTier} · start ${draft.waypoints.pickupTime}` : ""}`
+                  : draft.serviceType === "Airport" && draft.officeLocation
+                    ? `${draft.officeLocation} office · Airport transfer${draft.airport ? ` · ${airportDisplayName(draft.airport)}` : ""}`
+                    : "Service type and office not set yet"}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <button type="button" onClick={() => setShowHidden((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+              {showHidden ? "Hide Redacted" : "Show Hidden"}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition hover:bg-black/5" style={{ color: "var(--text-3)" }}><IconX size={18} /></button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto md:grid-cols-[340px_minmax(0,1fr)] md:overflow-hidden">
+          {/* Left: Template panel */}
+          <div className="flex flex-col gap-5 border-b p-4 sm:p-5 md:overflow-y-auto md:border-b-0 md:border-r" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Template</p>
+
+            <DebugField model="tour_templates" field="service_type">
+              <div>
+                <TTFieldLabel>Service Type</TTFieldLabel>
+                <div className="flex flex-wrap gap-1.5">
+                  {SERVICE_TYPES.map((type) => {
+                    const selected = draft.serviceType === type;
+                    return (
+                      <button key={type} type="button" disabled={locked} onClick={() => selectServiceType(type)}
+                        className={`rounded-lg border px-2.5 py-2 text-xs font-bold transition disabled:cursor-default ${selected ? serviceTypeBadgeClasses(type) + " border-transparent" : `${locked ? "opacity-60" : "hover:bg-black/5"}`}`}
+                        style={selected ? {} : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </DebugField>
+
+            <DebugField model="tour_templates" field="trip_name">
+              <div>
+                <TTFieldLabel>Trip Name</TTFieldLabel>
+                <input type="text" readOnly={locked} value={draft.tripName} onChange={(e) => update({ tripName: e.target.value })} onFocus={onFieldFocus} onBlur={onFieldBlur}
+                  placeholder="e.g. Autumn Foliage & Deer Paths" className={fieldClass} style={fieldStyle} />
+              </div>
+            </DebugField>
+
+            <DebugField model="tour_templates" field="office_id">
+              <div>
+                <TTFieldLabel>Office Location</TTFieldLabel>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {OFFICE_LOCATIONS.map((loc) => (
+                    <button key={loc} type="button" disabled={locked} onClick={() => selectOffice(loc)}
+                      className={`rounded-lg border px-2.5 py-2 text-xs font-semibold transition disabled:cursor-default ${draft.officeLocation === loc ? "border-transparent bg-[#121621] text-white" : locked ? "opacity-60" : "hover:bg-black/5"}`}
+                      style={draft.officeLocation === loc ? {} : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                      {loc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </DebugField>
+
+            {draft.serviceType === "Airport" ? (
+              draft.officeLocation && (OFFICE_AIRPORTS[draft.officeLocation]?.length ?? 0) > 1 && (
+                <DebugField model="tour_templates" field="airport_code">
+                  <div>
+                    <TTFieldLabel>Airport</TTFieldLabel>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {OFFICE_AIRPORTS[draft.officeLocation].map((airport) => (
+                        <button key={airport} type="button" disabled={locked} onClick={() => selectAirport(airport)}
+                          className={`rounded-lg border px-2.5 py-2 text-center text-xs font-semibold transition disabled:cursor-default ${draft.airport === airport ? "border-transparent bg-[#121621] text-white" : locked ? "opacity-60" : "hover:bg-black/5"}`}
+                          style={draft.airport === airport ? {} : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                          {airportDisplayName(airport)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </DebugField>
+              )
+            ) : (
+              <DebugField model="tour_templates" field="duration_tier">
+                <div>
+                  <TTFieldLabel>Duration Tier</TTFieldLabel>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {DURATION_TIERS.map((tier) => (
+                      <button key={tier} type="button" disabled={locked} onClick={() => commit("Duration tier changed", withSuggestedPrice({ durationTier: tier }))}
+                        className={`rounded-lg border px-2.5 py-2 text-center text-xs font-semibold transition disabled:cursor-default ${draft.durationTier === tier ? "border-transparent bg-[#121621] text-white" : locked ? "opacity-60" : "hover:bg-black/5"}`}
+                        style={draft.durationTier === tier ? {} : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                        {tier}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </DebugField>
+            )}
+
+            <div className="h-px" style={{ background: "var(--border)" }} />
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Trip Totals</p>
+            <div className="grid grid-cols-3 gap-2">
+              <DebugField model="tour_templates" field="route_distance_km">
+                <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                  <p className="text-[11px]" style={{ color: "var(--text-3)" }}>Distance</p>
+                  <p className="mt-0.5 text-sm font-bold tabular-nums" style={{ color: "var(--text-1)" }}>{draft.routeDistanceKm !== null ? `${draft.routeDistanceKm.toFixed(1)} km` : "--"}</p>
+                </div>
+              </DebugField>
+              <DebugField model="tour_templates" field="route_duration_mins">
+                <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                  <p className="text-[11px]" style={{ color: "var(--text-3)" }}>Duration</p>
+                  <p className="mt-0.5 text-sm font-bold tabular-nums" style={{ color: "var(--text-1)" }}>{draft.routeDurationMins !== null ? formatDuration(draft.routeDurationMins) : "--"}</p>
+                </div>
+              </DebugField>
+              <DebugField model="tour_templates" field="price">
+                <div className="rounded-lg border border-[#121621] bg-[#121621] px-2.5 py-2">
+                  <p className="text-[11px] text-white/50">Price</p>
+                  <p className="mt-0.5 text-sm font-bold tabular-nums text-[#FACC15]">{draft.price !== null ? formatPrice(draft.price) : "--"}</p>
+                </div>
+              </DebugField>
+            </div>
+            {!readyForPrice ? (
+              <p className="-mt-1 text-[11px]" style={{ color: "var(--text-3)" }}>{draft.serviceType === "Airport" ? "Select an office to set a starting price." : "Select an office and duration tier to set a starting price."}</p>
+            ) : (
+              <DebugField model="tour_templates" field="price">
+                <div>
+                  <TTFieldLabel>¥</TTFieldLabel>
+                  <input type="number" min="0" step="1000" readOnly={locked} value={draft.price ?? 0} onChange={(e) => update({ price: parseInt(e.target.value, 10) || 0 })} onFocus={onFieldFocus} onBlur={onFieldBlur} className={numFieldClass} style={fieldStyle} />
+                </div>
+              </DebugField>
+            )}
+            {!draft.routeDistanceKm && !draft.routeDurationMins && !draft.tripDistanceKm && !draft.tripDurationMins && (
+              <p className="-mt-1 text-[11px]" style={{ color: "var(--text-3)" }}>Distance and duration are calculated once the route's pick-up and drop-off pins are set — or preset them manually below.</p>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <DebugField model="tour_templates" field="trip_distance_km">
+                <div>
+                  <TTFieldLabel>Preset Distance (km)</TTFieldLabel>
+                  <input type="number" min="0" step="0.1" readOnly={locked} value={draft.tripDistanceKm ?? ""} onChange={(e) => update({ tripDistanceKm: e.target.value ? parseFloat(e.target.value) : null })} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="—" className={smallFieldClass} style={fieldStyle} />
+                </div>
+              </DebugField>
+              <DebugField model="tour_templates" field="trip_duration_mins">
+                <div>
+                  <TTFieldLabel>Preset Duration (min)</TTFieldLabel>
+                  <input type="number" min="0" step="5" readOnly={locked} value={draft.tripDurationMins ?? ""} onChange={(e) => update({ tripDurationMins: e.target.value ? parseInt(e.target.value, 10) : null })} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="—" className={smallFieldClass} style={fieldStyle} />
+                </div>
+              </DebugField>
+            </div>
+
+            <div className="h-px" style={{ background: "var(--border)" }} />
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Public Links</p>
+            <div className="flex flex-col gap-2">
+              <DebugField model="tour_templates" field="tour_details_url">
+                <div>
+                  <TTFieldLabel>Tour details page</TTFieldLabel>
+                  <div className="flex items-center gap-1.5">
+                    <input type="url" aria-label="Tour details URL" readOnly={locked} value={draft.previewLinks.tourDetails}
+                      onChange={(e) => update({ previewLinks: { ...draft.previewLinks, tourDetails: e.target.value } })} onFocus={onFieldFocus} onBlur={onFieldBlur}
+                      placeholder="https://www.zengoride.com/tours/..." className={linkFieldClass} style={linkFieldStyle} />
+                    {!isNew && draft.previewLinks.tourDetails && (
+                      <button type="button" title="Open tour details page" onClick={() => window.open(draft.previewLinks.tourDetails, "_blank", "noopener,noreferrer")}
+                        className="shrink-0 rounded-lg border p-2 text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-500/10" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                        <IconGlobe size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </DebugField>
+              <DebugField model="tour_templates" field="tour_booking_url">
+                <div>
+                  <TTFieldLabel>Booking page</TTFieldLabel>
+                  <div className="flex items-center gap-1.5">
+                    <input type="url" aria-label="Booking URL" readOnly={locked} value={draft.previewLinks.tourBooking}
+                      onChange={(e) => update({ previewLinks: { ...draft.previewLinks, tourBooking: e.target.value } })} onFocus={onFieldFocus} onBlur={onFieldBlur}
+                      placeholder="/tours/your-slug/00001/2026-09-02" className={linkFieldClass} style={linkFieldStyle} />
+                    {!isNew && draft.previewLinks.tourBooking && (
+                      <button type="button" title="Preview booking page" onClick={() => onOpenBooking(draft)}
+                        className="shrink-0 rounded-lg border p-2 text-violet-500 transition hover:bg-violet-50 dark:hover:bg-violet-500/10" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                        <IconCalendarClock size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </DebugField>
+            </div>
+
+            {showHidden && (
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed p-3.5" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Redacted fields</p>
+                {[["User Name", "userName", "user_name"], ["Email", "userEmail", "user_email"], ["User Source", "userSource", "user_source"], ["Payment Status", "paymentStatus", "payment_status"]].map(([label, key, dbField]) => (
+                  <DebugField key={key} model="tour_templates" field={dbField}>
+                    <div>
+                      <TTFieldLabel>{label}</TTFieldLabel>
+                      <input type="text" readOnly={locked} value={draft[key] ?? ""} onChange={(e) => update({ [key]: e.target.value || null })} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="—" className={smallFieldClass} style={fieldStyle} />
+                    </div>
+                  </DebugField>
+                ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <DebugField model="tour_templates" field="driver_name">
+                    <div>
+                      <TTFieldLabel>Driver</TTFieldLabel>
+                      <input type="text" readOnly={locked} value={draft.driverName ?? ""} onChange={(e) => update({ driverName: e.target.value || null })} onFocus={onFieldFocus} onBlur={onFieldBlur} className={smallFieldClass} style={fieldStyle} />
+                    </div>
+                  </DebugField>
+                  <DebugField model="tour_templates" field="plate_number">
+                    <div>
+                      <TTFieldLabel>Plate Number</TTFieldLabel>
+                      <input type="text" readOnly={locked} value={draft.plateNumber ?? ""} onChange={(e) => update({ plateNumber: e.target.value || null })} onFocus={onFieldFocus} onBlur={onFieldBlur} className={smallFieldClass} style={fieldStyle} />
+                    </div>
+                  </DebugField>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <DebugField model="tour_templates" field="passengers">
+                    <div>
+                      <TTFieldLabel>Passengers</TTFieldLabel>
+                      <select disabled={locked} value={draft.passengers ?? ""} onChange={(e) => update({ passengers: e.target.value ? Number(e.target.value) : null })} className={smallFieldClass} style={fieldStyle}>
+                        <option value="">—</option>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                  </DebugField>
+                  <DebugField model="tour_templates" field="luggage">
+                    <div>
+                      <TTFieldLabel>Luggage</TTFieldLabel>
+                      <select disabled={locked} value={draft.luggage ?? ""} onChange={(e) => update({ luggage: e.target.value ? Number(e.target.value) : null })} className={smallFieldClass} style={fieldStyle}>
+                        <option value="">—</option>
+                        {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                  </DebugField>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Route + Vehicle Pricing */}
+          <div className="flex flex-col gap-6 p-4 sm:p-5 md:overflow-y-auto">
+            <div>
+              <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}><IconMapPin size={14} />Route</p>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <p className="text-xs" style={{ color: "var(--text-3)" }}>
+                    {wp.stopovers.length} stopover{wp.stopovers.length === 1 ? "" : "s"} · {draft.routeDistanceKm !== null ? `${draft.routeDistanceKm.toFixed(1)} km` : "--"} · {formatDuration(draft.routeDurationMins)}
+                  </p>
+                  <button type="button" onClick={() => setRouteMapOpen((v) => !v)}
+                    className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition hover:bg-black/5"
+                    style={routeMapOpen ? { borderColor: "#121621", background: "var(--bg-subtle)", color: "var(--text-1)" } : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                    {routeMapOpen ? "Hide map" : "Show map"}
+                  </button>
+                  {!routeEditing ? (
+                    <button type="button" onClick={editRoute} disabled={locked} className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                      <IconPencil size={14} />Edit route
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" onClick={discardRoute} className="inline-flex h-[30px] items-center rounded-lg border px-3 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>Discard</button>
+                      <button type="button" onClick={applyRoute} className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border border-[#121621] bg-[#121621] px-3 text-xs font-semibold text-white transition hover:bg-gray-800"><IconCheck size={14} />Set route</button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
+                {!routeEditing ? (
+                  routeRows.map((row, i) => (
+                    <div key={row.badge} className={`grid grid-cols-[64px_minmax(0,1fr)_auto_24px] items-center gap-2 px-3 py-3 sm:grid-cols-[80px_minmax(0,1fr)_auto_28px] sm:gap-2.5 sm:px-3.5 ${i !== routeRows.length - 1 ? "border-b" : ""}`}
+                      style={{ borderColor: "var(--border-soft)", background: row.tone !== "plain" ? "var(--bg-subtle)" : "transparent" }}>
+                      {row.tone === "plain" ? (
+                        <span className="text-xs font-semibold" style={{ color: "var(--text-3)" }}>{row.badge}</span>
+                      ) : (
+                        <span className={`inline-flex w-fit items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${row.tone === "green" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"}`}>{row.badge}</span>
+                      )}
+                      <span className="truncate text-sm font-medium" style={{ color: "var(--text-1)" }}>{row.name || "—"}</span>
+                      <span className="whitespace-nowrap text-xs tabular-nums" style={{ color: "var(--text-3)" }}>{row.meta}</span>
+                      <IconMapPin size={16} className="justify-self-end" style={{ color: row.pin ? "#059669" : "var(--border)" }} />
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className={`border-b p-3 ${EDIT_ROUTE_ROW_GRID}`} style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+                      <DebugField model="waypoints" field="pickup_text">
+                        <div>
+                          <TTFieldLabel>Pick-up Spot</TTFieldLabel>
+                          <input type="text" value={wp.pickup} onChange={(e) => updateRouteCopy({ pickup: e.target.value })} placeholder="Pick-up description" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                        </div>
+                      </DebugField>
+                      {draft.serviceType === "Airport" ? <div aria-hidden="true" /> : (
+                        <DebugField model="waypoints" field="pickup_time">
+                          <div>
+                            <TTFieldLabel>Time</TTFieldLabel>
+                            <input type="time" value={wp.pickupTime} onChange={(e) => updateRouteCopy({ pickupTime: e.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                          </div>
+                        </DebugField>
+                      )}
+                      <MapLocationPicker theme="light" size="compact" label="Pick-up Spot" value={wp.pickupMapLocation ?? null} onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })} />
+                      <div aria-hidden="true" className="hidden sm:block" />
+                    </div>
+                    {wp.stopovers.map((stop, i) => (
+                      <div key={i} className={`border-b p-3 ${EDIT_ROUTE_ROW_GRID}`} style={{ borderColor: "var(--border-soft)" }}>
+                        <input type="text" value={stop.location} onChange={(e) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], location: e.target.value }; updateRouteCopy({ stopovers: arr }); }}
+                          placeholder={`Stop ${i + 1} description`} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                        <input type="text" value={stop.waitTime} onChange={(e) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], waitTime: e.target.value }; updateRouteCopy({ stopovers: arr }); }}
+                          placeholder="Wait time" aria-label={`Stop ${i + 1} wait time`} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                        <MapLocationPicker theme="light" size="compact" label={`Stopover ${i + 1}`} value={stop.mapLocation ?? null} onChange={(loc) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], mapLocation: loc }; updateRouteCopy({ stopovers: arr }); }} />
+                        <button type="button" onClick={() => updateRouteCopy({ stopovers: wp.stopovers.filter((_, j) => j !== i) })} className="flex h-9 w-8 shrink-0 items-center justify-center rounded text-red-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><IconTrash size={16} /></button>
+                      </div>
+                    ))}
+                    <div className="border-b p-3" style={{ borderColor: "var(--border-soft)" }}>
+                      <button type="button" onClick={() => updateRouteCopy({ stopovers: [...wp.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] })} className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 transition hover:text-violet-800">
+                        <IconPlus size={16} />Add stopover
+                      </button>
+                    </div>
+                    <div className={`p-3 ${EDIT_ROUTE_ROW_GRID}`} style={{ background: "var(--bg-subtle)" }}>
+                      <DebugField model="waypoints" field="dropoff_text">
+                        <div>
+                          <TTFieldLabel>Drop-off Spot</TTFieldLabel>
+                          <input type="text" value={wp.dropoff} onChange={(e) => updateRouteCopy({ dropoff: e.target.value })} placeholder="Drop-off description" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                        </div>
+                      </DebugField>
+                      <div aria-hidden="true" className="hidden sm:block" />
+                      <MapLocationPicker theme="light" size="compact" label="Drop-off Spot" value={wp.dropoffMapLocation ?? null} onChange={(loc) => updateRouteCopy({ dropoffMapLocation: loc })} />
+                      <div aria-hidden="true" className="hidden sm:block" />
+                    </div>
+                  </>
+                )}
+              </div>
+              {routeMapOpen && <RouteMap waypoints={draft.waypoints} />}
+            </div>
+
+            {draft.serviceType === "Sightseeing Charter" ? (
+              draft.officeLocation && draft.durationTier ? (
+                <VehiclePricingTable officeLocation={draft.officeLocation} durationTier={draft.durationTier} pricing={draft.vehiclePricing} onChange={handleVehiclePricingChange} locked={locked} />
+              ) : (
+                <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select an office and duration tier to see available vehicle pricing.</div>
+              )
+            ) : draft.serviceType === "Airport" ? (
+              draft.officeLocation && draft.airport ? (
+                <AirportVehiclePricingTable officeLocation={draft.officeLocation} airport={draft.airport} pricing={draft.airportVehiclePricing} onChange={handleAirportVehiclePricingChange} locked={locked} />
+              ) : (
+                <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select an office and airport to see available vehicle pricing.</div>
+              )
+            ) : (
+              <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select a service type to see available vehicle pricing.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:gap-4 sm:px-6 sm:py-4" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}>
+          <div className="flex items-center gap-3">
+            <p className={`text-xs ${footerNoteClass}`} style={{ color: saveError ? undefined : "var(--text-3)" }}>{footerNote}</p>
+            {!isNew && (
+              <button type="button" title="Delete template" onClick={() => setDeleteConfirmOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10" style={{ color: "var(--text-3)" }}>
+                <IconTrash size={14} />Delete
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {mode === "edit" && (
+              <button type="button" disabled={history.length === 0} title={history.length > 0 ? `Undo: ${history[history.length - 1].label}` : "Nothing to undo yet"} onClick={undo}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-45" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
+                <IconRefresh size={14} />Undo
+              </button>
+            )}
+            <button type="button" onClick={cancelEdits} className="rounded-lg border px-5 py-2.5 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>{mode === "view" ? "Close" : "Cancel"}</button>
+            {mode === "view" ? (
+              <button type="button" onClick={enterEdit} className="inline-flex items-center gap-2 rounded-lg bg-[#FACC15] px-5 py-2.5 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]"><IconPencil size={14} />Edit template</button>
+            ) : (
+              <button type="button" disabled={!saveEnabled} onClick={handleSave} className="rounded-lg bg-[#FACC15] px-6 py-2.5 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308] disabled:cursor-not-allowed disabled:opacity-45">{isNew ? "Create template" : "Save changes"}</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {deleteConfirmOpen && (
+        <ConfirmDialog title="Delete this template?" description={`"${draft.tripName || "Untitled template"}" (${draft.id}) will be permanently removed from the catalog. This can't be undone.`}
+          confirmLabel="Delete template" onCancel={() => setDeleteConfirmOpen(false)} onConfirm={() => { onDelete(tour.id); setDeleteConfirmOpen(false); }} />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Pricing CMS ---------------- */
+function OfficeFilterChips({ officeFilter, onChange, counts }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {["All", ...OFFICE_LOCATIONS].map((office) => (
+        <button key={office} type="button" onClick={() => onChange(office)}
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${officeFilter === office ? "bg-[#121621] text-white" : "hover:bg-black/10"}`}
+          style={officeFilter === office ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>
+          {office} ({counts[office]})
+        </button>
+      ))}
+    </div>
+  );
+}
+const PRICING_TABS = ["Tour Charters", "Airport Price", "Customized Price", "Offices", "Vehicle Lineup"];
+
+function PricingCMSView() {
+  const [activeTab, setActiveTab] = useState("Tour Charters");
+  const [rows, setRows] = useState(SIGHTSEEING_PRICE_SEED);
+  const [airportRows, setAirportRows] = useState(AIRPORT_PRICE_SEED);
+  const [customRows, setCustomRows] = useState(CUSTOMIZED_PRICE_SEED);
+  const [officeFilter, setOfficeFilter] = useState("All");
+  const [editingAirportRow, setEditingAirportRow] = useState(null);
+  const [editingSightseeingRow, setEditingSightseeingRow] = useState(null);
+  const [editingCustomRow, setEditingCustomRow] = useState(null);
+
+  const sightseeingCounts = useMemo(() => officeCounts(rows), [rows]);
+  const airportCounts = useMemo(() => officeCounts(airportRows), [airportRows]);
+  const customCounts = useMemo(() => officeCounts(customRows), [customRows]);
+
+  const filteredSightseeing = officeFilter === "All" ? rows : rows.filter((r) => r.office === officeFilter);
+  const filteredAirport = officeFilter === "All" ? airportRows : airportRows.filter((r) => r.office === officeFilter);
+  const filteredCustom = officeFilter === "All" ? customRows : customRows.filter((r) => r.office === officeFilter);
+
+  const handleRefresh = () => { setRows(SIGHTSEEING_PRICE_SEED); setAirportRows(AIRPORT_PRICE_SEED); setCustomRows(CUSTOMIZED_PRICE_SEED); setOfficeFilter("All"); };
+
+  const th = "px-4 py-3 text-xs font-semibold uppercase tracking-wide";
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-1)" }}>Pricing CMS</h1>
+        <button type="button" onClick={handleRefresh} className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-4 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}>
+          <IconRefresh size={16} /> Refresh
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-1 border-b" style={{ borderColor: "var(--border)" }}>
+        {PRICING_TABS.map((tab) => (
+          <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+            className="px-4 py-2.5 text-sm font-medium transition"
+            style={activeTab === tab ? { borderBottom: "2px solid #FACC15", color: "var(--text-1)" } : { color: "var(--text-3)" }}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "Tour Charters" ? (
+        <>
+          <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={sightseeingCounts} />
+          <div className="overflow-hidden rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+            <table className="w-full text-left text-sm">
+              <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+                {["Vehicle Type","Vehicle Name","Office","Owner","Available","Half Day ¥","Full Day ¥","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+              </tr></thead>
+              <tbody>
+                {filteredSightseeing.map((row) => (
+                  <tr key={row.id} onClick={() => setEditingSightseeingRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                    <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleType}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.vehicleName}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.office}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(row.halfDayPrice)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(row.fullDayPrice)}</td>
+                    <td className="px-4 py-3"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingSightseeingRow(row); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editingSightseeingRow && (
+            <SightseeingPriceModal row={editingSightseeingRow} onClose={() => setEditingSightseeingRow(null)}
+              onSave={(u) => { setRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingSightseeingRow(null); }} />
+          )}
+        </>
+      ) : activeTab === "Airport Price" ? (
+        <>
+          <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={airportCounts} />
+          <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+                {["Vehicle Type","Vehicle Name","Office","Airports & Fixed Fee","Owner","Available","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+              </tr></thead>
+              <tbody>
+                {filteredAirport.map((row) => (
+                  <tr key={row.id} onClick={() => setEditingAirportRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                    <td className="px-4 py-3 align-top font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleType}</td>
+                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{row.vehicleName}</td>
+                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{row.office}</td>
+                    <td className="px-4 py-3 align-top">
+                      {row.legs.length === 0 ? <span style={{ color: "var(--text-3)" }}>—</span> : (
+                        <div className="flex flex-col gap-1">
+                          {row.legs.map((leg) => (
+                            <div key={leg.airport} className="flex items-center gap-2 text-xs">
+                              <span className="whitespace-nowrap rounded-md border px-2 py-0.5 font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{AIRPORT_CODES[leg.airport] || leg.airport}</span>
+                              <span className="tabular-nums font-semibold" style={{ color: "var(--text-1)" }}>{formatPrice(leg.fixedFee)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{row.owner}</td>
+                    <td className="px-4 py-3 align-top" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setAirportRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
+                    <td className="px-4 py-3 align-top"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingAirportRow(row); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editingAirportRow && (
+            <AirportPriceModal row={editingAirportRow} onClose={() => setEditingAirportRow(null)}
+              onSave={(u) => { setAirportRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingAirportRow(null); }} />
+          )}
+        </>
+      ) : activeTab === "Customized Price" ? (
+        <>
+          <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={customCounts} />
+          <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+            <table className="w-full min-w-[1200px] text-left text-sm">
+              <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+                {["Vehicle Name","Office","Owner","Available","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Dispatch Km","Return Km","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
+              </tr></thead>
+              <tbody>
+                {filteredCustom.map((row) => (
+                  <tr key={row.id} onClick={() => setEditingCustomRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                    <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.office}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setCustomRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.minDurationHrs)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? formatPrice(row.unitPrice) : formatPrice(row.unit1to4)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? <span style={{ color: "var(--text-3)" }}>—</span> : formatPrice(row.unit4to7)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? <span style={{ color: "var(--text-3)" }}>—</span> : formatPrice(row.unit7to10)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{!row.fixedRateAvailable ? <span style={{ color: "var(--text-3)" }}>—</span> : formatPrice(row.fixedRate)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.overtimeCharge)}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{row.dispatchFee ? `${formatPrice(row.dispatchFee)}/${row.dispatchFreeKm}km` : "—"}</td>
+                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{row.returnFee ? `${formatPrice(row.returnFee)}/${row.returnFreeKm}km` : "—"}</td>
+                    <td className="px-4 py-3"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingCustomRow(row); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editingCustomRow && (
+            <CustomizedPriceModal row={editingCustomRow} onClose={() => setEditingCustomRow(null)}
+              onSave={(u) => { setCustomRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingCustomRow(null); }} />
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-24" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
+          <p className="text-lg font-medium" style={{ color: "var(--text-2)" }}>{activeTab}</p>
+          <p className="mt-1 text-sm">Not part of this prototype.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SightseeingPriceModal({ row, onClose, onSave }) {
+  const [draft, setDraft] = useState(row);
+  const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
+  return (
+    <ModalShell title="Edit Vehicle Pricing" onClose={onClose}
+      footer={(<>
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
+      </>)}>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
+        <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
+        <Field label="Office"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.office}</p></Field>
+      </div>
+      <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
+      <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Half Day ¥"><input type="number" min="0" value={draft.halfDayPrice} onChange={(e) => patch({ halfDayPrice: parseInt(e.target.value,10)||0 })} className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+        <Field label="Full Day ¥"><input type="number" min="0" value={draft.fullDayPrice} onChange={(e) => patch({ fullDayPrice: parseInt(e.target.value,10)||0 })} className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+      </div>
+    </ModalShell>
+  );
+}
+
+function AirportPriceModal({ row, onClose, onSave }) {
+  const [draft, setDraft] = useState(row);
+  const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
+  const availableAirports = OFFICE_AIRPORTS[row.office] || [];
+  const toggleAirport = (airport) => setDraft((prev) => {
+    const exists = prev.legs.some((l) => l.airport === airport);
+    if (exists) return { ...prev, legs: prev.legs.filter((l) => l.airport !== airport) };
+    return { ...prev, legs: [...prev.legs, { airport, fixedFee: 0 }] };
+  });
+  const setFee = (airport, fee) => setDraft((prev) => ({ ...prev, legs: prev.legs.map((l) => l.airport === airport ? { ...l, fixedFee: fee } : l) }));
+
+  return (
+    <ModalShell title="Edit Airport Price" onClose={onClose}
+      footer={(<>
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
+      </>)}>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
+        <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
+        <Field label="Office"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.office}</p></Field>
+      </div>
+      <Field label="Airports">
+        <div className="flex flex-wrap gap-1.5">
+          {availableAirports.map((a) => {
+            const active = draft.legs.some((l) => l.airport === a);
+            return <button key={a} type="button" onClick={() => toggleAirport(a)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={active ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{a}</button>;
+          })}
+        </div>
+      </Field>
+      <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
+      <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
+      {draft.legs.length > 0 && (
+        <Field label="Fixed Fee per Airport">
+          <div className="flex flex-col gap-2">
+            {draft.legs.map((leg) => (
+              <div key={leg.airport} className="flex items-center gap-3 rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+                <span className="w-40 truncate text-sm font-medium" style={{ color: "var(--text-1)" }}>{leg.airport} <span className="text-xs" style={{ color: "var(--text-3)" }}>({AIRPORT_CODES[leg.airport]})</span></span>
+                <input type="number" min="0" value={leg.fixedFee} onChange={(e) => setFee(leg.airport, parseInt(e.target.value,10)||0)} className="ml-auto w-32 rounded-lg border px-3 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              </div>
+            ))}
+          </div>
+        </Field>
+      )}
+    </ModalShell>
+  );
+}
+
+function CustomizedPriceModal({ row, onClose, onSave }) {
+  const [draft, setDraft] = useState(row);
+  const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
+  const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
+  const num = fieldBox + " tabular-nums";
+  return (
+    <ModalShell title="Edit Customized Price" onClose={onClose} maxWidth="max-w-2xl"
+      footer={(<>
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
+      </>)}>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
+        <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
+        <Field label="Office"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.office}</p></Field>
+      </div>
+      <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Owner</p><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></div>
+      <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
+      <Field label="Min. Fare (hrs)"><input type="text" inputMode="numeric" value={draft.minDurationHrs ?? ""} onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })} placeholder="0" className={`${num} max-w-[110px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+      <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border-soft)" }}><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Tiered Pricing</p><Toggle available={draft.tieredPricing !== false} onToggle={() => patch({ tieredPricing: !(draft.tieredPricing !== false) })} /></div>
+      {draft.tieredPricing !== false ? (
+        <div className="grid grid-cols-3 gap-3">
+          {[["unit1to4","1-4h ¥"],["unit4to7","4-7h ¥"],["unit7to10","7-10h ¥"]].map(([k,l]) => (
+            <Field key={k} label={l}><input type="text" inputMode="numeric" value={draft[k] ?? ""} onChange={(e) => patch({ [k]: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+          ))}
+        </div>
+      ) : (
+        <Field label="Unit Price / Hour"><input type="text" inputMode="numeric" value={draft.unitPrice ?? ""} onChange={(e) => patch({ unitPrice: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+      )}
+      <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border-soft)" }}><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Fixed Rate Availability</p><Toggle available={draft.fixedRateAvailable} onToggle={() => patch({ fixedRateAvailable: !draft.fixedRateAvailable })} /></div>
+      {draft.fixedRateAvailable && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Fixed Rate Range (h)">
+            <div className="flex items-center gap-1.5">
+              <input type="text" inputMode="numeric" value={draft.fixedRateFromHrs ?? ""} onChange={(e) => patch({ fixedRateFromHrs: numOrNull(e.target.value) })} placeholder="4" className={`${num} max-w-[72px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <span style={{ color: "var(--text-3)" }}>~</span>
+              <input type="text" inputMode="numeric" value={draft.fixedRateToHrs ?? ""} onChange={(e) => patch({ fixedRateToHrs: numOrNull(e.target.value) })} placeholder="10" className={`${num} max-w-[72px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+            </div>
+          </Field>
+          <Field label="Fixed Rate ¥"><input type="text" inputMode="numeric" value={draft.fixedRate ?? ""} onChange={(e) => patch({ fixedRate: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+        </div>
+      )}
+      <Field label="Overtime Charge ¥ / 30min"><input type="text" inputMode="numeric" value={draft.overtimeCharge ?? ""} onChange={(e) => patch({ overtimeCharge: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        {[["dispatchFee","dispatchFreeKm","Dispatch Free Km"],["returnFee","returnFreeKm","Return Free Km"]].map(([feeKey,kmKey,label]) => (
+          <Field key={feeKey} label={label}>
+            <div className="flex items-center gap-1.5">
+              <input type="text" inputMode="numeric" value={draft[feeKey] ?? ""} onChange={(e) => patch({ [feeKey]: numOrNull(e.target.value) })} placeholder="2000" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <span style={{ color: "var(--text-3)" }}>/</span>
+              <input type="text" inputMode="numeric" value={draft[kmKey] ?? ""} onChange={(e) => patch({ [kmKey]: numOrNull(e.target.value) })} placeholder="20" className={`${num} max-w-[80px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <span className="text-xs" style={{ color: "var(--text-3)" }}>km</span>
+            </div>
+          </Field>
+        ))}
+      </div>
+      <div className="border-t pt-4" style={{ borderColor: "var(--border-soft)" }}>
+        <p className={fieldLabel} style={{ color: "var(--text-3)" }}>Long Distance Charge</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Max Distance">
+            <div className="flex items-center gap-1.5">
+              <input type="text" inputMode="numeric" value={draft.longDistanceMaxKm ?? ""} onChange={(e) => patch({ longDistanceMaxKm: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <span className="text-xs" style={{ color: "var(--text-3)" }}>km</span>
+            </div>
+          </Field>
+          <Field label="Overcharge Rate ¥">
+            <div className="flex items-center gap-1.5">
+              <input type="text" inputMode="numeric" value={draft.longDistanceOverchargeRate ?? ""} onChange={(e) => patch({ longDistanceOverchargeRate: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <span className="text-xs" style={{ color: "var(--text-3)" }}>/km</span>
+            </div>
+          </Field>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Booking flow (ported from lib/bookingData.ts + components/booking/ItineraryPlanner.tsx) ---------------- */
+const AUTUMN_FOLIAGE_DEMO_ITINERARY = {
+  slug: "autumn-foliage-deer-paths", tripName: "Autumn Foliage & Deer Paths",
+  pickup: "THE OSAKA STATION HOTEL, Autograph Collection", dropoff: "THE OSAKA STATION HOTEL, Autograph Collection",
+  stopovers: [{ location: "Tōdai-ji", waitTime: "3h" }, { location: "Mount Wakakusa", waitTime: "None" }],
+  defaultTime: "09:00", tripDistanceKm: 80.1, drivingMins: 118, waitingMins: 180, totalMins: 298,
+};
+function parseWaitMins(waitTime) {
+  if (!waitTime || waitTime.toLowerCase() === "none") return 0;
+  const hourMatch = waitTime.match(/(\d+)\s*h/i);
+  const minMatch = waitTime.match(/(\d+)\s*min/i);
+  return (hourMatch ? parseInt(hourMatch[1], 10) * 60 : 0) + (minMatch ? parseInt(minMatch[1], 10) : 0);
+}
+function buildItineraryFromTour(tour) {
+  const slug = slugifyTripName(tour.tripName);
+  if (slug === "autumn-foliage-deer-paths") return AUTUMN_FOLIAGE_DEMO_ITINERARY;
+  const waitingMins = tour.waypoints.stopovers.reduce((sum, s) => sum + parseWaitMins(s.waitTime), 0);
+  const totalMins = tour.tripDurationMins ?? tour.routeDurationMins ?? 0;
+  const drivingMins = Math.max(totalMins - waitingMins, 0);
+  return {
+    slug, tripName: tour.tripName, pickup: tour.waypoints.pickup, dropoff: tour.waypoints.dropoff,
+    stopovers: tour.waypoints.stopovers.map((s) => ({ location: s.location, waitTime: s.waitTime || "None" })),
+    defaultTime: tour.waypoints.pickupTime, tripDistanceKm: tour.tripDistanceKm ?? tour.routeDistanceKm ?? 0,
+    drivingMins, waitingMins, totalMins,
+  };
+}
+function formatDurationLabel(mins) {
+  const h = Math.floor(mins / 60); const m = mins % 60;
+  if (h === 0) return `${m}mins`;
+  if (m === 0) return `${h}hrs`;
+  return `${h}hrs ${m}mins`;
+}
+function ItineraryPlanner({ itinerary, sequence, onClose }) {
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedTime, setSelectedTime] = useState(itinerary.defaultTime);
+  const [passengers, setPassengers] = useState(2);
+  const [luggage, setLuggage] = useState(2);
+  const [otherLuggage, setOtherLuggage] = useState("");
+  const [pickup, setPickup] = useState(itinerary.pickup);
+  const [dropoff, setDropoff] = useState(itinerary.dropoff);
+  const [pickupMap, setPickupMap] = useState(null);
+  const [dropoffMap, setDropoffMap] = useState(null);
+  const [stopovers, setStopovers] = useState(itinerary.stopovers.map((s) => ({ location: s.location, waitTime: s.waitTime, mapLocation: null })));
+  const [pickupConfirmed, setPickupConfirmed] = useState(false);
+  const [dropoffConfirmed, setDropoffConfirmed] = useState(false);
+
+  const defaultPickup = itinerary.pickup;
+  const defaultDropoff = itinerary.dropoff;
+  const dateReady = selectedDate.length > 0;
+  const locationsReady = pickupConfirmed && dropoffConfirmed;
+  const canContinue = dateReady && locationsReady;
+
+  const formattedDate = useMemo(() => {
+    if (!selectedDate) return null;
+    const d = new Date(`${selectedDate}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return selectedDate;
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  }, [selectedDate]);
+
+  return (
+    <div className="fixed inset-0 z-[200] overflow-y-auto bg-slate-950">
+      <div className="relative min-h-screen overflow-hidden">
+        {/* Background — inline gradient + schematic pattern instead of an external photo */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 20% 20%, #1e293b 0%, #0f172a 45%, #020617 100%)" }} />
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "repeating-linear-gradient(120deg, rgba(250,204,21,0.05) 0 2px, transparent 2px 60px)" }} />
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]" />
+
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-6 sm:px-6">
+          <header className="mb-6 flex flex-wrap items-center justify-between gap-3 text-white">
+            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-md transition hover:bg-white/20">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FACC15] text-[#121621]"><IconArrowUp size={16} className="-rotate-90" /></span>
+              Close Preview
+            </button>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-1.5 text-white/90">Hi Sosuke Brause!</span>
+            </div>
+          </header>
+
+          <div className="flex flex-1 flex-col rounded-[2rem] border border-white/20 bg-slate-900/40 p-4 shadow-2xl backdrop-blur-xl sm:p-8">
+            <div className="mb-8 flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+              {["Itinerary Planning", "Vehicle Class", "Additional Info", "Review & Submit"].map((label, i) => {
+                const step = i + 1; const active = step === 1;
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${active ? "bg-[#FACC15] text-[#121621]" : "border border-white/30 text-white/70"}`}>{step}</div>
+                    <span className={`hidden text-sm sm:inline ${active ? "font-semibold text-[#FACC15]" : "text-white/60"}`}>{label}</span>
+                    {step < 4 && <div className="mx-1 hidden h-px w-6 bg-white/20 sm:block" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            <h1 className="mb-8 text-center text-2xl font-bold text-white sm:text-4xl">Chartered Tour</h1>
+
+            <div className={`mb-6 rounded-2xl border p-4 ${dateReady ? "border-white/10 bg-white/5" : "border-amber-400/40 bg-amber-500/5 ring-1 ring-amber-400/30"}`}>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Scheduled trip date</p>
+                {!dateReady && <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">Required</span>}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-white">
+                  <span className="text-xs text-white/50">Date</span>
+                  <input type="date" required value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="ml-auto bg-transparent text-sm outline-none [color-scheme:dark]" />
+                </label>
+                <label className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-white">
+                  <span className="text-xs text-white/50">Time</span>
+                  <input type="time" value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} className="ml-auto bg-transparent text-sm outline-none [color-scheme:dark]" />
+                </label>
+              </div>
+              <p className="mt-2 text-center text-xs text-white/40">{formattedDate ? `${formattedDate} · Ref ${sequence}` : "Choose the date for your trip · Ref " + sequence}</p>
+            </div>
+
+            <div className="mb-6">
+              {!locationsReady && (
+                <div role="alert" className="mb-4 flex gap-3 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-amber-100">
+                  <div className="text-sm leading-relaxed">
+                    <p className="font-semibold text-amber-200">Review your pick-up &amp; drop-off locations</p>
+                    <p className="mt-1 text-amber-100/80">These defaults use a central location so we can estimate trip time and distance. Please confirm or update both to match your accommodation before continuing.</p>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+                <div className="h-full rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <BookingLocationPoint kind="pickup" label="Pick-up spot" value={pickup} defaultValue={defaultPickup} confirmed={pickupConfirmed}
+                    mapLocation={pickupMap} onMapLocationChange={setPickupMap}
+                    onChange={(next) => { setPickup(next); setPickupConfirmed(false); }}
+                    onReset={() => { setPickup(defaultPickup); setPickupMap(null); setPickupConfirmed(false); }}
+                    onConfirm={() => setPickupConfirmed(true)} isFirst />
+                  {stopovers.map((stop, i) => (
+                    <BookingStopoverPoint key={i} index={i} location={stop.location} waitTime={stop.waitTime} mapLocation={stop.mapLocation}
+                      onLocationChange={(location) => setStopovers((prev) => prev.map((s, j) => (j === i ? { ...s, location } : s)))}
+                      onWaitTimeChange={(waitTime) => setStopovers((prev) => prev.map((s, j) => (j === i ? { ...s, waitTime } : s)))}
+                      onMapLocationChange={(mapLocation) => setStopovers((prev) => prev.map((s, j) => (j === i ? { ...s, mapLocation } : s)))} />
+                  ))}
+                  <button type="button" className="my-3 ml-8 inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"><IconPlus size={16} />Add a new Stopover</button>
+                  <BookingLocationPoint kind="dropoff" label="Drop-off Spot" value={dropoff} defaultValue={defaultDropoff} confirmed={dropoffConfirmed}
+                    mapLocation={dropoffMap} onMapLocationChange={setDropoffMap}
+                    onChange={(next) => { setDropoff(next); setDropoffConfirmed(false); }}
+                    onReset={() => { setDropoff(defaultDropoff); setDropoffMap(null); setDropoffConfirmed(false); }}
+                    onConfirm={() => setDropoffConfirmed(true)} isLast />
+                </div>
+                <BookingRouteMapPreview tripName={itinerary.tripName} />
+              </div>
+            </div>
+
+            <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: "Trip Distance", value: `${itinerary.tripDistanceKm.toFixed(1)} km` },
+                { label: "Driving", value: formatDurationLabel(itinerary.drivingMins) },
+                { label: "Sightseeing", value: formatDurationLabel(itinerary.waitingMins) },
+                { label: "Total", value: formatDurationLabel(itinerary.totalMins), highlight: true },
+              ].map(({ label, value, highlight }) => (
+                <div key={label} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center">
+                  <p className="text-xs text-white/50">{label}</p>
+                  <p className={`mt-1 text-sm font-semibold sm:text-base ${highlight ? "text-[#FACC15]" : "text-white"}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-white">
+                <span className="text-sm text-white/50">Passenger</span>
+                <select value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} className="ml-auto bg-transparent text-sm outline-none">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n} className="bg-slate-800">{n}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-white">
+                <span className="text-lg">🧳</span>
+                <span className="text-sm text-white/50">Check-in size luggage</span>
+                <select value={luggage} onChange={(e) => setLuggage(Number(e.target.value))} className="ml-auto bg-transparent text-sm outline-none">
+                  {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n} className="bg-slate-800">{n}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <input type="text" value={otherLuggage} onChange={(e) => setOtherLuggage(e.target.value)} placeholder="Other luggage — Skis, stroller, wheel chair, etc"
+              className="mb-8 w-full rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-white placeholder-white/40 outline-none focus:border-white/30" />
+
+            <button type="button" disabled={!canContinue} className={`w-full rounded-full border py-4 text-base font-semibold backdrop-blur-md transition ${canContinue ? "border-white/20 bg-slate-900/60 text-white hover:bg-slate-800/80" : "cursor-not-allowed border-white/10 bg-white/5 text-white/40"}`}>Continue</button>
+            {!canContinue && (
+              <p className="mt-3 text-center text-sm text-amber-300/90">
+                {!dateReady && !locationsReady ? "Select your trip date and confirm both pick-up and drop-off locations to continue." : !dateReady ? "Select your scheduled trip date to continue." : "Confirm both pick-up and drop-off locations above to continue."}
+              </p>
+            )}
+            {canContinue && <p className="mt-3 text-center text-xs text-emerald-400/80">Trip date and locations confirmed — ready to continue.</p>}
+          </div>
+
+          <p className="mt-4 text-center text-xs text-white/40">{itinerary.tripName} · Prototype booking flow</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+function BookingRouteMapPreview({ tripName }) {
+  return (
+    <div className="flex h-full min-h-[280px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+      <div className="relative min-h-[220px] flex-1">
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #064e3b 100%)" }} />
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 280" preserveAspectRatio="none">
+          <path d="M 50 220 Q 130 120, 210 140 T 350 80" fill="none" stroke="#FACC15" strokeWidth="3" strokeDasharray="6 4" />
+          <circle cx="50" cy="220" r="7" fill="#34d399" stroke="#fff" strokeWidth="2" />
+          <circle cx="210" cy="140" r="6" fill="#FACC15" stroke="#fff" strokeWidth="2" />
+          <circle cx="280" cy="110" r="6" fill="#FACC15" stroke="#fff" strokeWidth="2" />
+          <circle cx="350" cy="80" r="7" fill="#f87171" stroke="#fff" strokeWidth="2" />
+        </svg>
+        <div className="absolute left-3 top-3 rounded-lg bg-black/40 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-sm">Route Preview</div>
+      </div>
+      <div className="flex items-center gap-2 border-t border-white/10 px-4 py-3 text-xs text-white/60">
+        <IconMapPin size={14} className="shrink-0 text-[#FACC15]" />
+        <span>Route Preview</span>
+        <span className="ml-auto truncate text-white/40">{tripName}</span>
+      </div>
+    </div>
+  );
+}
+function BookingLocationPoint({ kind, label, value, defaultValue, confirmed, mapLocation, onMapLocationChange, onChange, onReset, onConfirm, isFirst, isLast }) {
+  const isDefault = value.trim() === defaultValue.trim();
+  const canConfirm = value.trim().length > 0;
+  return (
+    <div className={`relative flex gap-4 pl-2 ${confirmed ? "rounded-xl ring-1 ring-emerald-400/30" : "rounded-xl ring-2 ring-amber-400/50 ring-offset-2 ring-offset-transparent"}`}>
+      {!isLast && <div className="absolute left-[19px] top-8 h-[calc(100%+8px)] w-px bg-white/20" />}
+      <div className={`relative z-10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isFirst ? "bg-emerald-500/20" : isLast ? "bg-rose-500/20" : "bg-white/10"}`}>
+        <IconMapPin size={16} className={isFirst ? "text-emerald-400" : "text-rose-400"} />
+      </div>
+      <div className="flex min-w-0 flex-1 gap-3 pb-6 pt-0.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-white/50">{label}</p>
+            {confirmed ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300"><IconCheck size={12} />Confirmed</span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">Needs review</span>
+            )}
+            {!confirmed && isDefault && <span className="text-[10px] text-white/40">Default location</span>}
+          </div>
+          <input type="text" value={value} onChange={(e) => onChange(e.target.value)} aria-label={`${label} description`}
+            placeholder={`Enter your ${kind === "pickup" ? "pick-up" : "drop-off"} description`}
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/30" />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onReset} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/10"><IconRefresh size={12} />Reset to default</button>
+            <button type="button" onClick={onConfirm} disabled={!canConfirm}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${canConfirm ? (confirmed ? "bg-emerald-500/25 text-emerald-200" : "bg-[#FACC15] text-[#121621] hover:bg-[#eab308]") : "cursor-not-allowed bg-white/5 text-white/30"}`}>
+              <IconCheck size={12} />{confirmed ? "Confirmed" : "Confirm location"}
+            </button>
+          </div>
+        </div>
+        <MapLocationPicker label={label} value={mapLocation} onChange={onMapLocationChange} theme="dark" />
+      </div>
+    </div>
+  );
+}
+function BookingStopoverPoint({ index, location, waitTime, mapLocation, onLocationChange, onWaitTimeChange, onMapLocationChange }) {
+  return (
+    <div className="relative flex gap-4 pl-2">
+      <div className="absolute left-[19px] top-8 h-[calc(100%+8px)] w-px bg-white/20" />
+      <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10">
+        <span className="flex h-4 w-4 items-center justify-center rounded-full border border-white/40 text-[10px] text-white/70">{index + 1}</span>
+      </div>
+      <div className="flex min-w-0 flex-1 gap-3 pb-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <p className="text-xs text-white/50">Stopover {index + 1}</p>
+          <input type="text" value={location} onChange={(e) => onLocationChange(e.target.value)} aria-label={`Stopover ${index + 1} description`}
+            placeholder="Sightseeing spot name or description" className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/30 focus:ring-1 focus:ring-white/20" />
+          <label className="flex items-center gap-2 text-xs text-white/50">
+            Standby time
+            <input type="text" value={waitTime} onChange={(e) => onWaitTimeChange(e.target.value)} className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white outline-none focus:border-white/30" />
+          </label>
+        </div>
+        <MapLocationPicker label={`Stopover ${index + 1}`} value={mapLocation} onChange={onMapLocationChange} theme="dark" />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Placeholder view (Orders / Dispatch Board) ---------------- */
+function PlaceholderView({ title }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-32" style={{ color: "var(--text-3)" }}>
+      <p className="text-lg font-medium" style={{ color: "var(--text-2)" }}>{title}</p>
+      <p className="mt-1 text-sm">This section is not part of the prototype.</p>
+    </div>
+  );
+}
+
+/* ---------------- App shell ---------------- */
+function createEmptyTour() {
+  return {
+    id: "-----", reference: "-----", tripName: "", officeLocation: null, durationTier: null, status: "inactive", price: null, startTime: "09:00",
+    viewedCount: 0, bookedCount: 0, serviceType: null, airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null,
+    driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+    waypoints: emptyWaypoints(), routeDistanceKm: null, routeDurationMins: null, tripDistanceKm: null, tripDurationMins: null,
+    previewLinks: { tourDetails: "https://www.zengoride.com/tours/new-tour", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/new-tour/0001/2026-09-02" },
+  };
+}
+function generateNextId(tours, serviceType, office) {
+  if (serviceType === "Airport") {
+    const nums = tours.map((t) => { const m = t.id.match(/^#A(\d{4})/); return m ? parseInt(m[1],10) : 0; }).filter((n) => n>0);
+    const next = nums.length ? Math.max(...nums)+1 : 1;
+    return `#A${String(next).padStart(4,"0")}${(office||"T")[0].toUpperCase()}`;
+  }
+  const nums = tours.map((t) => { const m = t.id.match(/#T(\d{4})A/); return m ? parseInt(m[1],10) : 0; }).filter((n) => n>0);
+  const next = nums.length ? Math.max(...nums)+1 : 1;
+  return `#T${String(next).padStart(4,"0")}A`;
+}
+
+function AdminShell() {
+  const [activeView, setActiveView] = useState("tour-catalog");
+  const [tours, setTours] = useState(SEED_TOURS);
+  const [modalTour, setModalTour] = useState(null);
+  const [isNewTour, setIsNewTour] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [bookingPreviewTour, setBookingPreviewTour] = useState(null);
+  const bookingItinerary = useMemo(() => (bookingPreviewTour ? buildItineraryFromTour(bookingPreviewTour) : null), [bookingPreviewTour]);
+  const openBooking = useCallback((tour) => setBookingPreviewTour(tour), []);
+
+  const openEdit = useCallback((id) => { const t = tours.find((x) => x.id === id); if (t) { setModalTour(t); setIsNewTour(false); } }, [tours]);
+  const openAdd = useCallback(() => { setModalTour(createEmptyTour()); setIsNewTour(true); }, []);
+  const handleToggleStatus = useCallback((id) => setTours((prev) => prev.map((t) => t.id === id ? { ...t, status: t.status === "active" ? "inactive" : "active" } : t)), []);
+  const handleDelete = useCallback((id) => { setTours((prev) => prev.filter((t) => t.id !== id)); setModalTour((prev) => prev && prev.id === id ? null : prev); }, []);
+  const handleSave = useCallback((saved) => {
+    if (isNewTour) {
+      const newId = generateNextId(tours, saved.serviceType, saved.officeLocation);
+      const finalized = { ...saved, id: newId };
+      setTours((prev) => [...prev, finalized]);
+      setModalTour(null);
+    } else {
+      setTours((prev) => prev.map((t) => t.id === saved.id ? saved : t));
+      setModalTour(null);
+    }
+    setIsNewTour(false);
+  }, [tours, isNewTour]);
+  const handleRefresh = useCallback(() => setTours(SEED_TOURS), []);
+
+  const viewTitles = { orders: "Orders", "dispatch-board": "Dispatch Board" };
+
+  return (
+    <DebugCtx.Provider value={{ debugMode, toggle: () => setDebugMode((v) => !v) }}>
+      <div className="min-h-screen" style={{ background: "var(--bg-app)" }}>
+        <Sidebar activeView={activeView} onNavigate={setActiveView} />
+        <main className="ml-56 min-h-screen p-8">
+          {activeView === "tour-catalog" ? (
+            <TourCatalogView tours={tours} onToggleStatus={handleToggleStatus} onEdit={openEdit} onAddTour={openAdd} onRefresh={handleRefresh} onDelete={handleDelete} onOpenBooking={openBooking} />
+          ) : activeView === "pricing-cms" ? (
+            <PricingCMSView />
+          ) : (
+            <PlaceholderView title={viewTitles[activeView]} />
+          )}
+        </main>
+        {modalTour && (
+          <TourTemplateModal tour={modalTour} isNew={isNewTour}
+            onClose={() => { setModalTour(null); setIsNewTour(false); }}
+            onSave={handleSave} onToggleStatus={handleToggleStatus} onDelete={handleDelete} onOpenBooking={openBooking} />
+        )}
+        {bookingPreviewTour && bookingItinerary && (
+          <ItineraryPlanner itinerary={bookingItinerary} sequence={bookingPreviewTour.id.replace(/[^0-9]/g, "").padStart(4, "0").slice(-4) || "0001"} onClose={() => setBookingPreviewTour(null)} />
+        )}
+      </div>
+    </DebugCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<AdminShell />);
+</script>
