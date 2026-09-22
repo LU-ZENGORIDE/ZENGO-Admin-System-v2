@@ -1,10 +1,11 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <meta charset="utf-8">
 <title>Zen Go Admin Console</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Wix+Madefor+Display:wght@400;600;700;800&display=swap">
 
 <style>
   :root{
@@ -74,6 +75,13 @@ const IconMap = (p) => <Icon {...p}><path d="M9 3 3 5v16l6-2 6 2 6-2V3l-6 2-6-2Z
 const IconPencil = (p) => <Icon {...p}><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.8 2.8L7 18.6 3 20l1.4-4Z"/></Icon>;
 const IconX = (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12"/></Icon>;
 const IconMapPin = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>;
+const IconPlane = (p) => <Icon {...p}><path d="M17.8 19.2 16 11l3.5-3.5c.8-.8.8-2 0-2.8-.8-.8-2-.8-2.8 0L13.2 8 5 6.2c-.5-.1-1 .1-1.3.4l-.6.6c-.5.5-.4 1.3.2 1.6L9 12l-2 2H4l-1.5 1.5c-.3.3-.3.7 0 1l.9.9 1.1 1.1.9.9c.3.3.7.3 1 0L8 17.9V15l2-2 3.6 5.7c.3.6 1.1.7 1.6.2l.6-.6c.3-.3.5-.8.4-1.3Z"/></Icon>;
+const IconFlag = (p) => <Icon {...p}><path d="M5 3v18"/><path d="M5 4h13l-3 5 3 5H5"/></Icon>;
+const IconSuitcase = (p) => <Icon {...p}><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></Icon>;
+const IconChevronRight = (p) => <Icon {...p}><path d="M9 6l6 6-6 6"/></Icon>;
+const IconArrowRight = (p) => <Icon {...p}><path d="M5 12h14M13 6l6 6-6 6"/></Icon>;
+const IconMinus = (p) => <Icon {...p}><path d="M5 12h14"/></Icon>;
+const IconClock = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></Icon>;
 
 /* ---------------- debug mode ---------------- */
 const DebugCtx = createContext({ debugMode: false, toggle: () => {} });
@@ -93,11 +101,12 @@ function formatPrice(v) { return v === null || v === undefined ? "—" : `¥${Nu
 function serviceTypeBadge(type) {
   if (type === "Airport") return "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300";
   if (type === "Sightseeing Charter") return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300";
+  if (type === "Fixed Route") return "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300";
   return "bg-gray-100 text-gray-500";
 }
 const OFFICE_LOCATIONS = ["Tokyo", "Osaka", "Nagoya", "Sapporo"];
-const SERVICE_TYPES = ["Sightseeing Charter", "Airport"];
-const DURATION_TIERS = ["Half Day 5hrs", "Full Day 10hrs"];
+const SERVICE_TYPES = ["Sightseeing Charter", "Airport", "Fixed Route"];
+const DURATION_TIERS = ["Half Day", "Full Day"];
 const AIRPORT_CODES = { "Narita Airport": "NRT", "Haneda Airport": "HND", "Kansai Airport": "KIX", "Osaka Itami Airport": "ITM", "Chubu Centrair Airport": "NGO", "New Chitose Airport": "CTS" };
 const OFFICE_AIRPORTS = { Tokyo: ["Narita Airport", "Haneda Airport"], Osaka: ["Kansai Airport", "Osaka Itami Airport"], Nagoya: ["Chubu Centrair Airport"], Sapporo: ["New Chitose Airport"] };
 
@@ -132,11 +141,13 @@ function slugifyTripName(name) {
 function draftIdForServiceType(type) {
   if (type === "Sightseeing Charter") return "#T-----";
   if (type === "Airport") return "#A-----";
+  if (type === "Fixed Route") return "#F-----";
   return "-----";
 }
 function serviceTypeBadgeClasses(type) {
   if (type === "Airport") return "bg-blue-50 text-blue-700";
   if (type === "Sightseeing Charter") return "bg-emerald-50 text-emerald-700";
+  if (type === "Fixed Route") return "bg-violet-50 text-violet-700";
   return "bg-gray-100 text-gray-500";
 }
 function airportDisplayName(airport) {
@@ -179,7 +190,7 @@ function estimateRouteMetrics(waypoints) {
   return { distanceKm, durationMins };
 }
 function suggestedPriceForOffice(office, isHalfDay) {
-  const rows = SIGHTSEEING_PRICE_SEED.filter((r) => r.office === office && r.available);
+  const rows = SIGHTSEEING_PRICE_SEED.filter((r) => (r.offices || []).includes(office) && r.available);
   if (rows.length === 0) return 0;
   const values = rows.map((r) => (isHalfDay ? r.halfDayPrice : r.fullDayPrice));
   const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -191,24 +202,24 @@ function emptyWaypoints() {
   return { pickup: "", pickupTime: "09:00", pickupMapLocation: null, stopovers: [], dropoff: "", dropoffMapLocation: null };
 }
 const SIGHTSEEING_SEED_TOURS = [
-  { id: "#T0001A", reference: "#T0001A", tripName: "Autumn Foliage & Deer Paths", officeLocation: "Osaka", durationTier: "Half Day 5hrs", status: "active", price: 60000, startTime: "09:00", viewedCount: 27, bookedCount: 3, serviceType: "Sightseeing Charter", airport: null,
-    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+  { id: "#T0001A", reference: "#T0001A", tripName: "Autumn Foliage & Deer Paths", officeLocation: "Osaka", durationTier: "Half Day", status: "active", price: 60000, startTime: "09:00", viewedCount: 27, bookedCount: 3, serviceType: "Sightseeing Charter", airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: { pickup: "Osaka Station", pickupTime: "09:00", pickupMapLocation: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" }, stopovers: [
       { location: "Nara Park", waitTime: "90 min", mapLocation: { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" } },
       { location: "Todai-ji Temple", waitTime: "60 min", mapLocation: { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" } },
     ], dropoff: "Osaka Station", dropoffMapLocation: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" } },
     routeDistanceKm: 80.2, routeDurationMins: 330, tripDistanceKm: null, tripDurationMins: null,
     previewLinks: { tourDetails: "https://www.zengoride.com/tours/autumn-foliage-deer-paths", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/autumn-foliage-deer-paths/00001/2026-09-02" } },
-  { id: "#T0002A", reference: "#T0002A", tripName: "Buddha by the Beach", officeLocation: "Tokyo", durationTier: "Half Day 5hrs", status: "active", price: 50000, startTime: "09:00", viewedCount: 41, bookedCount: 7, serviceType: "Sightseeing Charter", airport: null,
-    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+  { id: "#T0002A", reference: "#T0002A", tripName: "Buddha by the Beach", officeLocation: "Tokyo", durationTier: "Half Day", status: "active", price: 50000, startTime: "09:00", viewedCount: 41, bookedCount: 7, serviceType: "Sightseeing Charter", airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: { pickup: "Kamakura Station", pickupTime: "09:00", pickupMapLocation: { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" }, stopovers: [
       { location: "Great Buddha (Daibutsu)", waitTime: "45 min", mapLocation: { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" } },
       { location: "Yuigahama Beach", waitTime: "30 min", mapLocation: null },
     ], dropoff: "Kamakura Station", dropoffMapLocation: { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" } },
     routeDistanceKm: 45.0, routeDurationMins: 300, tripDistanceKm: null, tripDurationMins: null,
     previewLinks: { tourDetails: "https://www.zengoride.com/tours/buddha-by-the-beach", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/buddha-by-the-beach/00002/2026-09-02" } },
-  { id: "#T0003A", reference: "#T0003A", tripName: "Flavors of Edo", officeLocation: "Tokyo", durationTier: "Full Day 10hrs", status: "inactive", price: 80000, startTime: "10:00", viewedCount: 12, bookedCount: 1, serviceType: "Sightseeing Charter", airport: null,
-    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+  { id: "#T0003A", reference: "#T0003A", tripName: "Flavors of Edo", officeLocation: "Tokyo", durationTier: "Full Day", status: "inactive", price: 80000, startTime: "10:00", viewedCount: 12, bookedCount: 1, serviceType: "Sightseeing Charter", airport: null,
+    userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: { pickup: "Tokyo Station", pickupTime: "10:00", pickupMapLocation: null, stopovers: [
       { location: "Tsukiji Outer Market", waitTime: "60 min", mapLocation: null },
       { location: "Asakusa Senso-ji", waitTime: "45 min", mapLocation: null },
@@ -246,7 +257,7 @@ function buildAirportPresetTours() {
       status: "active", price: Math.round((route.priceUsd * 150) / 100) * 100, startTime: "09:00",
       viewedCount: 0, bookedCount: 0, serviceType: "Airport", airport: route.airport,
       userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null,
-      driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+      driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
       waypoints: { pickup: airportDisplayName(route.airport), pickupTime: "09:00", pickupMapLocation: AIRPORT_MAP_LOCATIONS[route.airport] ?? null, stopovers: [], dropoff: route.destination, dropoffMapLocation: null },
       routeDistanceKm: null, routeDurationMins: null, tripDistanceKm: null, tripDurationMins: null,
       previewLinks: { tourDetails: "https://www.zengoride.com/airport-transfer", tourBooking: `https://exert-hula-resilient.ngrok-free.dev/airport/${AIRPORT_CODES[route.airport]}/${String(index+1).padStart(4,"0")}/2026-09-02` },
@@ -256,27 +267,36 @@ function buildAirportPresetTours() {
 const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()];
 
 const SIGHTSEEING_PRICE_SEED = [
-  { id: "sp-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 10000, fullDayPrice: 12000 },
-  { id: "sp-2", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", office: "Osaka", owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
-  { id: "sp-3", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", office: "Nagoya", owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
-  { id: "sp-4", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 49000, fullDayPrice: 68000 },
-  { id: "sp-5", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", office: "Osaka", owner: "Self", available: false, halfDayPrice: 47000, fullDayPrice: 62000 },
-  { id: "sp-6", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 42000, fullDayPrice: 59000 },
-  { id: "sp-7", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", office: "Tokyo", owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
-  { id: "sp-11", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", office: "Osaka", owner: "Self", available: true, halfDayPrice: 48000, fullDayPrice: 64000 },
-  { id: "sp-12", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", office: "Osaka", owner: "Self", available: true, halfDayPrice: 43000, fullDayPrice: 60000 },
-  { id: "sp-14", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", office: "Sapporo", owner: "Self", available: true, halfDayPrice: 52000, fullDayPrice: 72000 },
+  { id: "sp-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 10000, fullDayPrice: 12000 },
+  { id: "sp-2", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Osaka"], owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
+  { id: "sp-3", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Nagoya"], owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
+  { id: "sp-4", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 49000, fullDayPrice: 68000 },
+  { id: "sp-5", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", offices: ["Osaka"], owner: "Self", available: false, halfDayPrice: 47000, fullDayPrice: 62000 },
+  { id: "sp-6", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 42000, fullDayPrice: 59000 },
+  { id: "sp-7", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 47000, fullDayPrice: 66000 },
+  { id: "sp-11", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", offices: ["Osaka"], owner: "Self", available: true, halfDayPrice: 48000, fullDayPrice: 64000 },
+  { id: "sp-12", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", offices: ["Osaka"], owner: "Self", available: true, halfDayPrice: 43000, fullDayPrice: 60000 },
+  { id: "sp-14", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", offices: ["Sapporo", "Nagoya"], owner: "Self", available: true, halfDayPrice: 52000, fullDayPrice: 72000 },
 ];
+/** Seeds a concentric-zone range set from a single base (outer) fee: an inner
+ * cheaper radius, the original fee as the mid radius, and a pricier outer radius. */
+function arRanges(baseFee) {
+  return [
+    { name: "Standard", radiusKm: 15, fixedFee: Math.round((baseFee * 0.78) / 100) * 100, center: null },
+    { name: "Extended", radiusKm: 30, fixedFee: baseFee, center: null },
+    { name: "Wide", radiusKm: 50, fixedFee: Math.round((baseFee * 1.35) / 100) * 100, center: null },
+  ];
+}
 const AIRPORT_PRICE_SEED = [
-  { id: "ap-1", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Tokyo", owner: "Partner", available: true, legs: [{ airport: "Narita Airport", fixedFee: 29318 }, { airport: "Haneda Airport", fixedFee: 21977 }] },
-  { id: "ap-2", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", office: "Tokyo", owner: "Self", available: true, legs: [{ airport: "Narita Airport", fixedFee: 19318 }, { airport: "Haneda Airport", fixedFee: 14705 }] },
-  { id: "ap-3", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", office: "Tokyo", owner: "Self", available: true, legs: [{ airport: "Narita Airport", fixedFee: 13864 }, { airport: "Haneda Airport", fixedFee: 7432 }] },
-  { id: "ap-5", vehicleType: "Luxury Sedan", vehicleName: "Mercedes Benz S-Class 4 Matic", office: "Tokyo", owner: "Partner", available: true, legs: [{ airport: "Narita Airport", fixedFee: 24500 }, { airport: "Haneda Airport", fixedFee: 18200 }] },
-  { id: "ap-11", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Osaka", owner: "Partner", available: true, legs: [{ airport: "Kansai Airport", fixedFee: 23000 }, { airport: "Osaka Itami Airport", fixedFee: 19000 }] },
-  { id: "ap-12", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", office: "Osaka", owner: "Partner", available: true, legs: [{ airport: "Kansai Airport", fixedFee: 14773 }, { airport: "Osaka Itami Airport", fixedFee: 12866 }] },
-  { id: "ap-16", vehicleType: "Premium Van", vehicleName: "Mercedes Benz V-Class", office: "Osaka", owner: "Self", available: false, legs: [] },
-  { id: "ap-18", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Nagoya", owner: "Partner", available: true, legs: [{ airport: "Chubu Centrair Airport", fixedFee: 18500 }] },
-  { id: "ap-21", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Sapporo", owner: "Partner", available: true, legs: [{ airport: "New Chitose Airport", fixedFee: 20000 }] },
+  { id: "ap-1", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", offices: ["Tokyo"], owner: "Partner", available: true, legs: [{ airport: "Narita Airport", ranges: arRanges(29318) }, { airport: "Haneda Airport", ranges: arRanges(21977) }] },
+  { id: "ap-2", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", offices: ["Tokyo"], owner: "Self", available: true, legs: [{ airport: "Narita Airport", ranges: arRanges(19318) }, { airport: "Haneda Airport", ranges: arRanges(14705) }] },
+  { id: "ap-3", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", offices: ["Tokyo"], owner: "Self", available: true, legs: [{ airport: "Narita Airport", ranges: arRanges(13864) }, { airport: "Haneda Airport", ranges: arRanges(7432) }] },
+  { id: "ap-5", vehicleType: "Luxury Sedan", vehicleName: "Mercedes Benz S-Class 4 Matic", offices: ["Tokyo", "Osaka"], owner: "Partner", available: true, legs: [{ airport: "Narita Airport", ranges: arRanges(24500) }, { airport: "Haneda Airport", ranges: arRanges(18200) }] },
+  { id: "ap-11", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", offices: ["Osaka"], owner: "Partner", available: true, legs: [{ airport: "Kansai Airport", ranges: arRanges(23000) }, { airport: "Osaka Itami Airport", ranges: arRanges(19000) }] },
+  { id: "ap-12", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", offices: ["Osaka"], owner: "Partner", available: true, legs: [{ airport: "Kansai Airport", ranges: arRanges(14773) }, { airport: "Osaka Itami Airport", ranges: arRanges(12866) }] },
+  { id: "ap-16", vehicleType: "Premium Van", vehicleName: "Mercedes Benz V-Class", offices: ["Osaka"], owner: "Self", available: false, legs: [] },
+  { id: "ap-18", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", offices: ["Nagoya"], owner: "Partner", available: true, legs: [{ airport: "Chubu Centrair Airport", ranges: arRanges(18500) }] },
+  { id: "ap-21", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", offices: ["Sapporo"], owner: "Partner", available: true, legs: [{ airport: "New Chitose Airport", ranges: arRanges(20000) }] },
 ];
 const CUSTOMIZED_PRICE_BASE = {
   "Commuter Van": { minDurationHrs: 4, unit1to4: 12000, unit4to7: 10500, unit7to10: 9500, fixedRate: 66000, overtimeCharge: 4500, dispatchFee: 2000, dispatchFreeKm: 20 },
@@ -285,17 +305,28 @@ const CUSTOMIZED_PRICE_BASE = {
 };
 const CUSTOMIZED_PRICE_SEED = SIGHTSEEING_PRICE_SEED.map((r) => {
   const base = CUSTOMIZED_PRICE_BASE[r.vehicleType] || CUSTOMIZED_PRICE_BASE["Commuter Van"];
-  return { id: r.id.replace("sp-", "cp-"), vehicleType: r.vehicleType, vehicleName: r.vehicleName, office: r.office, owner: r.owner, available: r.available,
+  return { id: r.id.replace("sp-", "cp-"), vehicleType: r.vehicleType, vehicleName: r.vehicleName, offices: r.offices, owner: r.owner, available: r.available,
     minDurationHrs: base.minDurationHrs, tieredPricing: true, unitPrice: null, unit1to4: base.unit1to4, unit4to7: base.unit4to7, unit7to10: base.unit7to10,
     fixedRateAvailable: true, fixedRateFromHrs: 4, fixedRateToHrs: 10, fixedRate: base.fixedRate, overtimeCharge: base.overtimeCharge,
     dispatchFee: base.dispatchFee, dispatchFreeKm: base.dispatchFreeKm, returnFee: base.dispatchFee, returnFreeKm: base.dispatchFreeKm,
     longDistanceMaxKm: null, longDistanceOverchargeRate: null };
 });
 function officeCounts(rows) {
-  const counts = { All: rows.length, Tokyo: 0, Osaka: 0, Nagoya: 0, Sapporo: 0 };
-  rows.forEach((r) => counts[r.office]++);
+  const counts = { Tokyo: 0, Osaka: 0, Nagoya: 0, Sapporo: 0 };
+  rows.forEach((r) => (r.offices || []).forEach((o) => { if (o in counts) counts[o]++; }));
   return counts;
 }
+const VEHICLE_TYPES = ["Commuter Van", "Premium Minivan", "Premium Van", "Crossover EV", "Luxury Sedan"];
+const VEHICLE_LINEUP_SEED = [
+  { id: "v-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Tokyo", "Osaka", "Nagoya"], ownerByOffice: { Tokyo: "Self", Osaka: "Self", Nagoya: "Self" } },
+  { id: "v-2", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", offices: ["Tokyo", "Osaka", "Nagoya", "Sapporo"], ownerByOffice: { Tokyo: "Partner", Osaka: "Partner", Nagoya: "Partner", Sapporo: "Partner" } },
+  { id: "v-3", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 40Gen", offices: ["Tokyo", "Osaka", "Sapporo", "Nagoya"], ownerByOffice: { Tokyo: "Self", Osaka: "Self", Sapporo: "Self", Nagoya: "Self" } },
+  { id: "v-4", vehicleType: "Premium Minivan", vehicleName: "Toyota Alphard 30Gen", offices: ["Tokyo", "Osaka"], ownerByOffice: { Tokyo: "Self", Osaka: "Self" } },
+  { id: "v-5", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", offices: ["Tokyo", "Osaka"], ownerByOffice: { Tokyo: "Self", Osaka: "Partner" } },
+  { id: "v-6", vehicleType: "Premium Van", vehicleName: "Mercedes Benz V-Class", offices: ["Osaka"], ownerByOffice: { Osaka: "Self" } },
+  { id: "v-7", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", offices: ["Tokyo", "Osaka"], ownerByOffice: { Tokyo: "Self", Osaka: "Self" } },
+  { id: "v-8", vehicleType: "Luxury Sedan", vehicleName: "Mercedes Benz S-Class 4 Matic", offices: ["Tokyo", "Osaka"], ownerByOffice: { Tokyo: "Partner", Osaka: "Partner" } },
+];
 
 /* ---------------- small shared components ---------------- */
 function Toggle({ available, onToggle, small }) {
@@ -365,15 +396,25 @@ function MapLocationPicker({ value, onChange, label, theme = "dark", size = "def
   const [open, setOpen] = useState(false);
   const styles = MAP_PICKER_TRIGGER_STYLES[theme];
   const compact = size === "compact";
+  const isField = size === "field";
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}
-        title={value ? `Edit map location: ${value.title}` : `Set map location for ${label}`}
-        aria-label={value ? `Edit map location for ${label}` : `Add map location for ${label}`}
-        className={`flex shrink-0 items-center justify-center rounded-lg border transition ${compact ? "h-9 w-9 self-end" : "w-11 flex-col self-stretch rounded-xl"} ${value ? styles.filled : styles.empty}`}>
-        <IconMapPin size={16} style={value ? { fill: "currentColor", fillOpacity: 0.18 } : undefined} />
-        {!compact && <span className="mt-1 text-[9px] font-medium uppercase tracking-wide">{value ? "Pin" : "Map"}</span>}
-      </button>
+      {isField ? (
+        <button type="button" onClick={() => setOpen(true)}
+          className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm outline-none transition hover:border-gray-400 focus:border-gray-400">
+          <IconMapPin size={15} className={value ? "shrink-0 text-emerald-500" : "shrink-0 text-gray-300"} />
+          <span className={`min-w-0 flex-1 truncate ${value ? "text-gray-900" : "text-gray-400"}`}>{value ? value.title : `Search for ${label.toLowerCase()}…`}</span>
+          <IconChevronRight size={14} className="shrink-0 text-gray-300" />
+        </button>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)}
+          title={value ? `Edit map location: ${value.title}` : `Set map location for ${label}`}
+          aria-label={value ? `Edit map location for ${label}` : `Add map location for ${label}`}
+          className={`flex shrink-0 items-center justify-center rounded-lg border transition ${compact ? "h-9 w-9 self-end" : "w-11 flex-col self-stretch rounded-xl"} ${value ? styles.filled : styles.empty}`}>
+          <IconMapPin size={16} style={value ? { fill: "currentColor", fillOpacity: 0.18 } : undefined} />
+          {!compact && <span className="mt-1 text-[9px] font-medium uppercase tracking-wide">{value ? "Pin" : "Map"}</span>}
+        </button>
+      )}
       {open && (
         <MapLocationModal label={label} initial={value} theme={theme} onClose={() => setOpen(false)}
           onSave={(loc) => { onChange(loc); setOpen(false); }} />
@@ -495,7 +536,7 @@ function RouteMap({ waypoints }) {
 /* ---------------- Vehicle Pricing Tables (ported from components/booking/*VehiclePricingTable.tsx) ---------------- */
 function pricingRowKey(row) { return `${row.vehicleType}::${row.vehicleName}`; }
 function loadSightseeingRowsForOffice(office) {
-  return SIGHTSEEING_PRICE_SEED.filter((row) => row.office === office && row.available).map((row) => ({
+  return SIGHTSEEING_PRICE_SEED.filter((row) => (row.offices || []).includes(office) && row.available).map((row) => ({
     vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, halfDayPrice: row.halfDayPrice, fullDayPrice: row.fullDayPrice, custom: false, customPrice: "",
   }));
 }
@@ -505,12 +546,6 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
   const stale = pricing !== null && pricing.office !== officeLocation;
   const activeOffice = pricing?.office ?? officeLocation;
   const activeRows = pricing?.rows ?? loadSightseeingRowsForOffice(officeLocation);
-  const handleReload = () => {
-    const freshRows = loadSightseeingRowsForOffice(officeLocation);
-    const prevByKey = new Map(activeRows.map((r) => [pricingRowKey(r), r]));
-    const rows = freshRows.map((row) => { const prev = prevByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
-    onChange({ office: officeLocation, rows });
-  };
   const toggleCustom = (index) => {
     const rows = [...activeRows]; const row = rows[index]; const willBeOn = !row.custom;
     rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(isHalfDay ? row.halfDayPrice : row.fullDayPrice) : "" };
@@ -521,25 +556,21 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
   const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
   return (
     <div className="relative rounded-xl border border-gray-200 p-4">
-      <button type="button" title="Reload from CMS" disabled={locked} onClick={handleReload}
-        className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 transition hover:border-gray-900 hover:text-gray-900 disabled:cursor-default disabled:opacity-40">
-        <IconRefresh size={14} />
-      </button>
-      <div className="flex items-start justify-between gap-4 pr-9">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <p className="flex items-center gap-2 text-sm font-bold text-gray-800"><IconDollar size={16} className="text-gray-500" />Vehicle Pricing</p>
           <p className="mt-1 text-xs text-gray-500">Sightseeing category · {officeLocation} office · available vehicles only</p>
         </div>
         {pricing && !locked && <button type="button" onClick={() => onChange(null)} className="h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-600 transition hover:bg-gray-50">Clear</button>}
       </div>
-      {stale && <div className="mt-3.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Loaded for the {pricing.office} office — this template is now set to {officeLocation}. Reload to refresh the list.</div>}
+      {stale && <div className="mt-3.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Loaded for the {pricing.office} office — this template is now set to {officeLocation}.</div>}
       {activeRows.length === 0 ? (
         <div className="mt-3.5 rounded-[10px] border border-dashed border-gray-200 bg-gray-50/60 p-5 text-center text-xs text-gray-500">No available Sightseeing vehicles found for {officeLocation}.</div>
       ) : (
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
-          <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+          <table className="w-full min-w-[480px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Type","Vehicle Name","Owner","Half Day ¥","Full Day ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+              {["Vehicle Type","Vehicle Name","Owner", isHalfDay ? "Half Day ¥" : "Full Day ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
             </tr></thead>
             <tbody>
               {activeRows.map((row, i) => {
@@ -549,8 +580,7 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
                     <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
                     <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
                     <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
-                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{row.halfDayPrice}</td>
-                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{row.fullDayPrice}</td>
+                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{isHalfDay ? row.halfDayPrice : row.fullDayPrice}</td>
                     <td className="px-2 py-[9px]">
                       <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
                         className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
@@ -568,20 +598,16 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
               })}
             </tbody>
           </table>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-3 py-[9px]">
-            <p className="text-xs text-gray-500">{activeRows.length} available vehicles from Pricing CMS · {overrideCount} custom override{overrideCount === 1 ? "" : "s"}{missingCount > 0 && ` · ${missingCount} missing a price`}</p>
-            <p className="whitespace-nowrap text-xs font-semibold text-gray-900">{applicableLabel} ¥ applies to this template ({durationTier})</p>
-          </div>
         </div>
       )}
     </div>
   );
 }
 function loadAirportRowsForOfficeAirport(office, airport) {
-  return AIRPORT_PRICE_SEED.filter((row) => row.office === office && row.available).flatMap((row) => {
+  return AIRPORT_PRICE_SEED.filter((row) => (row.offices || []).includes(office) && row.available).flatMap((row) => {
     const leg = row.legs.find((l) => l.airport === airport);
     if (!leg) return [];
-    return [{ vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: leg.fixedFee, distanceCapKm: leg.distanceCapKm ?? 0, excessRatePerKm: leg.excessRatePerKm ?? 0, custom: false, customPrice: "" }];
+    return [{ vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: leg.ranges?.[0]?.fixedFee ?? 0, ranges: leg.ranges ?? [], custom: false, customPrice: "" }];
   });
 }
 function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange, locked = false }) {
@@ -623,6 +649,88 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
+              {["Vehicle Type","Vehicle Name","Owner","Fixed Ranges","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+            </tr></thead>
+            <tbody>
+              {activeRows.map((row, i) => {
+                const invalid = row.custom && !row.customPrice.trim();
+                return (
+                  <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
+                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
+                    <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
+                    <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
+                    <td className="px-2 py-[9px] text-gray-600">
+                      {row.ranges.length === 0 ? <span className="text-gray-300">—</span> : (
+                        <div className="flex flex-wrap gap-1">
+                          {row.ranges.map((r, ri) => (
+                            <span key={ri} className="whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">≤{r.radiusKm}km ¥{r.fixedFee.toLocaleString()}</span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-2 py-[9px]">
+                      <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
+                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
+                        {row.custom ? <>ON<span className="ml-1 h-4 w-4 rounded-full bg-white" /></> : <><span className="mr-1 h-4 w-4 rounded-full bg-white" />OFF</>}
+                      </button>
+                    </td>
+                    <td className="px-2 py-[9px]">
+                      {!row.custom ? <span className="text-gray-300">—</span> : (
+                        <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
+                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Fixed Route Vehicle Pricing (mirrors AirportVehiclePricingTable, no airport dimension) ---------------- */
+const FIXED_ROUTE_PRICE_SEED = [
+  { id: "fr-1", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Tokyo", owner: "Self", available: true, fixedFee: 32000 },
+  { id: "fr-2", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", office: "Tokyo", owner: "Self", available: true, fixedFee: 24500 },
+  { id: "fr-3", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Osaka", owner: "Partner", available: true, fixedFee: 28000 },
+  { id: "fr-4", vehicleType: "Premium Van", vehicleName: "Toyota Alphard 40 Gen", office: "Osaka", owner: "Self", available: true, fixedFee: 21000 },
+  { id: "fr-5", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Nagoya", owner: "Partner", available: true, fixedFee: 26000 },
+  { id: "fr-6", vehicleType: "Commuter Van", vehicleName: "Hiace Commuter", office: "Sapporo", owner: "Partner", available: true, fixedFee: 30000 },
+];
+function loadFixedRouteRowsForOffice(office) {
+  return FIXED_ROUTE_PRICE_SEED.filter((row) => row.office === office && row.available).map((row) => ({
+    vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: row.fixedFee, custom: false, customPrice: "",
+  }));
+}
+function FixedRouteVehiclePricingTable({ officeLocation, pricing, onChange, locked = false }) {
+  const stale = pricing !== null && pricing.office !== officeLocation;
+  const activeOffice = pricing?.office ?? officeLocation;
+  const activeRows = pricing?.rows ?? loadFixedRouteRowsForOffice(officeLocation);
+  const toggleCustom = (index) => {
+    const rows = [...activeRows]; const row = rows[index]; const willBeOn = !row.custom;
+    rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(row.fixedFee) : "" };
+    onChange({ office: activeOffice, rows });
+  };
+  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, rows }); };
+  return (
+    <div className="relative rounded-xl border border-gray-200 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-bold text-gray-800"><IconDollar size={16} className="text-gray-500" />Vehicle Pricing</p>
+          <p className="mt-1 text-xs text-gray-500">Fixed Route category · {officeLocation} office · available vehicles only</p>
+        </div>
+        {pricing && !locked && <button type="button" onClick={() => onChange(null)} className="h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-600 transition hover:bg-gray-50">Clear</button>}
+      </div>
+      {stale && <div className="mt-3.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Loaded for the {pricing.office} office — this template is now set to {officeLocation}.</div>}
+      {activeRows.length === 0 ? (
+        <div className="mt-3.5 rounded-[10px] border border-dashed border-gray-200 bg-gray-50/60 p-5 text-center text-xs text-gray-500">No available Fixed Route vehicles found for {officeLocation}.</div>
+      ) : (
+        <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
+          <table className="w-full min-w-[480px] border-collapse text-left text-[13px]">
+            <thead><tr className="border-b border-gray-200 bg-gray-50">
               {["Vehicle Type","Vehicle Name","Owner","Fixed Fee ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
             </tr></thead>
             <tbody>
@@ -651,10 +759,6 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
               })}
             </tbody>
           </table>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-3 py-[9px]">
-            <p className="text-xs text-gray-500">{activeRows.length} available vehicles from Pricing CMS · {overrideCount} custom override{overrideCount === 1 ? "" : "s"}{missingCount > 0 && ` · ${missingCount} missing a price`}</p>
-            <p className="whitespace-nowrap text-xs font-semibold text-gray-900">Fixed fee ¥ applies to this template ({airportDisplayName(airport)})</p>
-          </div>
         </div>
       )}
     </div>
@@ -668,7 +772,11 @@ const NAV_ITEMS = [
   { id: "dispatch-board", label: "Dispatch Board", icon: IconLayout },
   { id: "tour-catalog", label: "Catalog", icon: IconMap },
 ];
-function Sidebar({ activeView, onNavigate }) {
+const SYSTEM_VIEWS = [
+  { id: "admin", label: "Admin Console" },
+  { id: "itinerary-editor", label: "Itinerary Editor" },
+];
+function Sidebar({ activeView, onNavigate, systemView, onSystemChange }) {
   const { debugMode, toggle } = useDebugMode();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-56 flex-col text-white" style={{ background: "var(--sidebar-bg)" }}>
@@ -683,7 +791,7 @@ function Sidebar({ activeView, onNavigate }) {
         <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white/30">Navigation</p>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map(({ id, label, icon: I }) => {
-            const isActive = activeView === id;
+            const isActive = systemView === "admin" && activeView === id;
             return (
               <li key={id}>
                 <button type="button" onClick={() => onNavigate(id)}
@@ -695,6 +803,13 @@ function Sidebar({ activeView, onNavigate }) {
             );
           })}
         </ul>
+        <div className="mt-5 border-t border-white/10 pt-4">
+          <label htmlFor="system-view-select" className="mb-2 block px-3 text-[10px] font-bold uppercase tracking-widest text-white/30">System</label>
+          <select id="system-view-select" value={systemView} onChange={(e) => onSystemChange(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white outline-none transition hover:bg-white/10 focus:border-[#FACC15]/50">
+            {SYSTEM_VIEWS.map((v) => <option key={v.id} value={v.id} className="bg-[#121621] text-white">{v.label}</option>)}
+          </select>
+        </div>
       </nav>
       <div className="border-t border-white/10 px-3 py-3">
         <button type="button" onClick={toggle} aria-pressed={debugMode}
@@ -720,7 +835,7 @@ const SORT_CONFIG = {
   serviceType: { type: "string", getValue: (t) => t.serviceType, defaultDir: "asc" },
   office: { type: "string", getValue: (t) => t.officeLocation, defaultDir: "asc" },
   duration: { type: "string", getValue: (t) => t.durationTier, defaultDir: "asc" },
-  start: { type: "string", getValue: (t) => (t.serviceType === "Airport" ? null : t.startTime), defaultDir: "asc" },
+  start: { type: "string", getValue: (t) => (t.serviceType === "Sightseeing Charter" ? t.startTime : null), defaultDir: "asc" },
   views: { type: "number", getValue: (t) => t.viewedCount, defaultDir: "desc" },
   books: { type: "number", getValue: (t) => t.bookedCount, defaultDir: "desc" },
   price: { type: "number", getValue: (t) => t.price, defaultDir: "desc" },
@@ -795,7 +910,7 @@ function TourCatalogView({ tours, onToggleStatus, onEdit, onAddTour, onRefresh, 
       case "serviceType": return <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${serviceTypeBadge(tour.serviceType)}`}>{tour.serviceType || "—"}</span>;
       case "office": return <span style={{ color: "var(--text-2)" }}>{tour.officeLocation}</span>;
       case "duration": return tour.durationTier ? <span className="inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-subtle)" }}>{tour.durationTier}</span> : <span style={{ color: "var(--text-3)" }}>—</span>;
-      case "start": return tour.serviceType === "Airport" ? <span style={{ color: "var(--text-3)" }}>—</span> : <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.startTime}</span>;
+      case "start": return tour.serviceType === "Sightseeing Charter" ? <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.startTime}</span> : <span style={{ color: "var(--text-3)" }}>—</span>;
       case "views": return <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.viewedCount}</span>;
       case "books": return <span className="tabular-nums" style={{ color: "var(--text-2)" }}>{tour.bookedCount}</span>;
       case "price": return <span className="font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(tour.price)}</span>;
@@ -1017,13 +1132,15 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
   };
   const selectServiceType = (type) => {
     const newId = draftIdForServiceType(type);
-    let patch = { serviceType: type, id: newId, reference: newId, price: null, vehiclePricing: null, airportVehiclePricing: null };
+    let patch = { serviceType: type, id: newId, reference: newId, price: null, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null };
     if (type === "Sightseeing Charter") {
       patch = { ...patch, airport: null };
-    } else {
+    } else if (type === "Airport") {
       const resolved = resolveAirportPickup(draft.officeLocation);
       patch = { ...patch, durationTier: null, airport: resolved.airport };
       patch = applyPickupResolution(patch, resolved);
+    } else {
+      patch = { ...patch, durationTier: null, airport: null };
     }
     commit("Service type selected", patch);
   };
@@ -1096,13 +1213,17 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
     if (pricing === null && draft.airportVehiclePricing) commit("Vehicle prices cleared", { airportVehiclePricing: null });
     else update({ airportVehiclePricing: pricing });
   };
+  const handleFixedRoutePricingChange = (pricing) => {
+    if (pricing === null && draft.fixedRoutePricing) commit("Vehicle prices cleared", { fixedRoutePricing: null });
+    else update({ fixedRoutePricing: pricing });
+  };
   const handleSave = () => {
     if (!draft.tripName.trim()) return setSaveError("Give the template a trip name before saving.");
     if (!draft.serviceType) return setSaveError("Select a service type before saving.");
     if (!draft.officeLocation) return setSaveError("Select an office location before saving.");
     if (draft.serviceType === "Sightseeing Charter" && !draft.durationTier) return setSaveError("Select a duration tier before saving.");
     if (draft.serviceType === "Airport" && !draft.airport) return setSaveError("Select an airport before saving.");
-    const hasMissingCustomPrice = draft.vehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim()) || draft.airportVehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim());
+    const hasMissingCustomPrice = draft.vehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim()) || draft.airportVehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim()) || draft.fixedRoutePricing?.rows.some((row) => row.custom && !row.customPrice.trim());
     if (hasMissingCustomPrice) return setSaveError("Set a custom price for every vehicle with Custom turned on, or turn Custom off.");
     setSaveError(null);
     onSave({ ...draft, reference: draft.id, startTime: draft.waypoints.pickupTime });
@@ -1110,7 +1231,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
 
   const wp = routeEditing && routeCopy ? routeCopy : draft.waypoints;
   const readyForPrice = draft.serviceType === "Sightseeing Charter" ? !!draft.officeLocation && !!draft.durationTier : draft.serviceType === "Airport" ? !!draft.officeLocation : false;
-  const canSave = !!draft.tripName.trim() && !!draft.serviceType && !!draft.officeLocation && (draft.serviceType === "Airport" ? !!draft.airport : !!draft.durationTier);
+  const canSave = !!draft.tripName.trim() && !!draft.serviceType && !!draft.officeLocation && (draft.serviceType === "Airport" ? !!draft.airport : draft.serviceType === "Sightseeing Charter" ? !!draft.durationTier : true);
   const dirty = baseline ? JSON.stringify(baseline) !== JSON.stringify(draft) : true;
   const saveEnabled = canSave && dirty && hasEdits && !routeEditing;
   const lastLabel = history.length ? history[history.length - 1].label : hasCustomOverride ? "Custom price set" : "";
@@ -1125,7 +1246,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
   const linkFieldStyle = locked ? { borderColor: "rgba(139,92,246,.25)", background: "rgba(139,92,246,.05)", color: "rgba(139,92,246,.6)" } : { borderColor: "rgba(139,92,246,.4)", background: "rgba(139,92,246,.08)", color: "#7c3aed" };
 
   const routeRows = [
-    { badge: "Pick-up", tone: "green", name: draft.waypoints.pickup, meta: draft.serviceType === "Airport" ? "" : draft.waypoints.pickupTime, pin: draft.waypoints.pickupMapLocation },
+    { badge: "Pick-up", tone: "green", name: draft.waypoints.pickup, meta: draft.serviceType === "Sightseeing Charter" ? draft.waypoints.pickupTime : "", pin: draft.waypoints.pickupMapLocation },
     ...draft.waypoints.stopovers.map((s, i) => ({ badge: `Stop ${i + 1}`, tone: "plain", name: s.location, meta: s.waitTime, pin: s.mapLocation })),
     { badge: "Drop-off", tone: "red", name: draft.waypoints.dropoff, meta: "", pin: draft.waypoints.dropoffMapLocation },
   ];
@@ -1151,14 +1272,13 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                   ? `${draft.officeLocation} office · Sightseeing Charter${draft.durationTier ? ` · ${draft.durationTier} · start ${draft.waypoints.pickupTime}` : ""}`
                   : draft.serviceType === "Airport" && draft.officeLocation
                     ? `${draft.officeLocation} office · Airport transfer${draft.airport ? ` · ${airportDisplayName(draft.airport)}` : ""}`
-                    : "Service type and office not set yet"}
+                    : draft.serviceType === "Fixed Route" && draft.officeLocation
+                      ? `${draft.officeLocation} office · Fixed Route`
+                      : "Service type and office not set yet"}
               </p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <button type="button" onClick={() => setShowHidden((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
-              {showHidden ? "Hide Redacted" : "Show Hidden"}
-            </button>
             <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition hover:bg-black/5" style={{ color: "var(--text-3)" }}><IconX size={18} /></button>
           </div>
         </div>
@@ -1175,15 +1295,18 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                 <div className="flex flex-wrap gap-1.5">
                   {SERVICE_TYPES.map((type) => {
                     const selected = draft.serviceType === type;
+                    const serviceTypeLocked = locked || !isNew;
                     return (
-                      <button key={type} type="button" disabled={locked} onClick={() => selectServiceType(type)}
-                        className={`rounded-lg border px-2.5 py-2 text-xs font-bold transition disabled:cursor-default ${selected ? serviceTypeBadgeClasses(type) + " border-transparent" : `${locked ? "opacity-60" : "hover:bg-black/5"}`}`}
+                      <button key={type} type="button" disabled={serviceTypeLocked} onClick={() => selectServiceType(type)}
+                        title={!isNew ? "Service type can't be changed after a template is created" : undefined}
+                        className={`rounded-lg border px-2.5 py-2 text-xs font-bold transition disabled:cursor-default ${selected ? serviceTypeBadgeClasses(type) + " border-transparent" : `${serviceTypeLocked ? "opacity-60" : "hover:bg-black/5"}`}`}
                         style={selected ? {} : { borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-2)" }}>
                         {type}
                       </button>
                     );
                   })}
                 </div>
+                {!isNew && <p className="mt-1.5 text-[11px]" style={{ color: "var(--text-3)" }}>Locked after creation — service type can't be changed on an existing template.</p>}
               </div>
             </DebugField>
 
@@ -1211,7 +1334,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
             </DebugField>
 
             {draft.serviceType === "Airport" ? (
-              draft.officeLocation && (OFFICE_AIRPORTS[draft.officeLocation]?.length ?? 0) > 1 && (
+              draft.officeLocation && (
                 <DebugField model="tour_templates" field="airport_code">
                   <div>
                     <TTFieldLabel>Airport</TTFieldLabel>
@@ -1227,7 +1350,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                   </div>
                 </DebugField>
               )
-            ) : (
+            ) : draft.serviceType === "Sightseeing Charter" ? (
               <DebugField model="tour_templates" field="duration_tier">
                 <div>
                   <TTFieldLabel>Duration Tier</TTFieldLabel>
@@ -1242,11 +1365,11 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                   </div>
                 </div>
               </DebugField>
-            )}
+            ) : null}
 
             <div className="h-px" style={{ background: "var(--border)" }} />
             <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Trip Totals</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <DebugField model="tour_templates" field="route_distance_km">
                 <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
                   <p className="text-[11px]" style={{ color: "var(--text-3)" }}>Distance</p>
@@ -1259,26 +1382,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                   <p className="mt-0.5 text-sm font-bold tabular-nums" style={{ color: "var(--text-1)" }}>{draft.routeDurationMins !== null ? formatDuration(draft.routeDurationMins) : "--"}</p>
                 </div>
               </DebugField>
-              <DebugField model="tour_templates" field="price">
-                <div className="rounded-lg border border-[#121621] bg-[#121621] px-2.5 py-2">
-                  <p className="text-[11px] text-white/50">Price</p>
-                  <p className="mt-0.5 text-sm font-bold tabular-nums text-[#FACC15]">{draft.price !== null ? formatPrice(draft.price) : "--"}</p>
-                </div>
-              </DebugField>
             </div>
-            {!readyForPrice ? (
-              <p className="-mt-1 text-[11px]" style={{ color: "var(--text-3)" }}>{draft.serviceType === "Airport" ? "Select an office to set a starting price." : "Select an office and duration tier to set a starting price."}</p>
-            ) : (
-              <DebugField model="tour_templates" field="price">
-                <div>
-                  <TTFieldLabel>¥</TTFieldLabel>
-                  <input type="number" min="0" step="1000" readOnly={locked} value={draft.price ?? 0} onChange={(e) => update({ price: parseInt(e.target.value, 10) || 0 })} onFocus={onFieldFocus} onBlur={onFieldBlur} className={numFieldClass} style={fieldStyle} />
-                </div>
-              </DebugField>
-            )}
-            {!draft.routeDistanceKm && !draft.routeDurationMins && !draft.tripDistanceKm && !draft.tripDurationMins && (
-              <p className="-mt-1 text-[11px]" style={{ color: "var(--text-3)" }}>Distance and duration are calculated once the route's pick-up and drop-off pins are set — or preset them manually below.</p>
-            )}
             <div className="grid grid-cols-2 gap-2">
               <DebugField model="tour_templates" field="trip_distance_km">
                 <div>
@@ -1331,53 +1435,6 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
               </DebugField>
             </div>
 
-            {showHidden && (
-              <div className="flex flex-col gap-3 rounded-lg border border-dashed p-3.5" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Redacted fields</p>
-                {[["User Name", "userName", "user_name"], ["Email", "userEmail", "user_email"], ["User Source", "userSource", "user_source"], ["Payment Status", "paymentStatus", "payment_status"]].map(([label, key, dbField]) => (
-                  <DebugField key={key} model="tour_templates" field={dbField}>
-                    <div>
-                      <TTFieldLabel>{label}</TTFieldLabel>
-                      <input type="text" readOnly={locked} value={draft[key] ?? ""} onChange={(e) => update({ [key]: e.target.value || null })} onFocus={onFieldFocus} onBlur={onFieldBlur} placeholder="—" className={smallFieldClass} style={fieldStyle} />
-                    </div>
-                  </DebugField>
-                ))}
-                <div className="grid grid-cols-2 gap-2">
-                  <DebugField model="tour_templates" field="driver_name">
-                    <div>
-                      <TTFieldLabel>Driver</TTFieldLabel>
-                      <input type="text" readOnly={locked} value={draft.driverName ?? ""} onChange={(e) => update({ driverName: e.target.value || null })} onFocus={onFieldFocus} onBlur={onFieldBlur} className={smallFieldClass} style={fieldStyle} />
-                    </div>
-                  </DebugField>
-                  <DebugField model="tour_templates" field="plate_number">
-                    <div>
-                      <TTFieldLabel>Plate Number</TTFieldLabel>
-                      <input type="text" readOnly={locked} value={draft.plateNumber ?? ""} onChange={(e) => update({ plateNumber: e.target.value || null })} onFocus={onFieldFocus} onBlur={onFieldBlur} className={smallFieldClass} style={fieldStyle} />
-                    </div>
-                  </DebugField>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <DebugField model="tour_templates" field="passengers">
-                    <div>
-                      <TTFieldLabel>Passengers</TTFieldLabel>
-                      <select disabled={locked} value={draft.passengers ?? ""} onChange={(e) => update({ passengers: e.target.value ? Number(e.target.value) : null })} className={smallFieldClass} style={fieldStyle}>
-                        <option value="">—</option>
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
-                  </DebugField>
-                  <DebugField model="tour_templates" field="luggage">
-                    <div>
-                      <TTFieldLabel>Luggage</TTFieldLabel>
-                      <select disabled={locked} value={draft.luggage ?? ""} onChange={(e) => update({ luggage: e.target.value ? Number(e.target.value) : null })} className={smallFieldClass} style={fieldStyle}>
-                        <option value="">—</option>
-                        {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
-                  </DebugField>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right: Route + Vehicle Pricing */}
@@ -1428,10 +1485,17 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                       <DebugField model="waypoints" field="pickup_text">
                         <div>
                           <TTFieldLabel>Pick-up Spot</TTFieldLabel>
-                          <input type="text" value={wp.pickup} onChange={(e) => updateRouteCopy({ pickup: e.target.value })} placeholder="Pick-up description" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                          {draft.serviceType === "Airport" ? (
+                            <select value={draft.airport ?? ""} onChange={(e) => selectAirport(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
+                              <option value="" disabled>Select airport…</option>
+                              {(OFFICE_AIRPORTS[draft.officeLocation] ?? Object.keys(AIRPORT_CODES)).map((a) => <option key={a} value={a}>{airportDisplayName(a)}</option>)}
+                            </select>
+                          ) : (
+                            <input type="text" value={wp.pickup} onChange={(e) => updateRouteCopy({ pickup: e.target.value })} placeholder="Pick-up description" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                          )}
                         </div>
                       </DebugField>
-                      {draft.serviceType === "Airport" ? <div aria-hidden="true" /> : (
+                      {draft.serviceType !== "Sightseeing Charter" ? <div aria-hidden="true" /> : (
                         <DebugField model="waypoints" field="pickup_time">
                           <div>
                             <TTFieldLabel>Time</TTFieldLabel>
@@ -1486,6 +1550,12 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
               ) : (
                 <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select an office and airport to see available vehicle pricing.</div>
               )
+            ) : draft.serviceType === "Fixed Route" ? (
+              draft.officeLocation ? (
+                <FixedRouteVehiclePricingTable officeLocation={draft.officeLocation} pricing={draft.fixedRoutePricing} onChange={handleFixedRoutePricingChange} locked={locked} />
+              ) : (
+                <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select an office to see available vehicle pricing.</div>
+              )
             ) : (
               <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select a service type to see available vehicle pricing.</div>
             )}
@@ -1528,10 +1598,20 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
 }
 
 /* ---------------- Pricing CMS ---------------- */
+function OfficeTags({ offices }) {
+  if (!offices || offices.length === 0) return <span style={{ color: "var(--text-3)" }}>—</span>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {offices.map((o) => (
+        <span key={o} className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</span>
+      ))}
+    </div>
+  );
+}
 function OfficeFilterChips({ officeFilter, onChange, counts }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {["All", ...OFFICE_LOCATIONS].map((office) => (
+      {OFFICE_LOCATIONS.map((office) => (
         <button key={office} type="button" onClick={() => onChange(office)}
           className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${officeFilter === office ? "bg-[#121621] text-white" : "hover:bg-black/10"}`}
           style={officeFilter === office ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>
@@ -1541,6 +1621,45 @@ function OfficeFilterChips({ officeFilter, onChange, counts }) {
     </div>
   );
 }
+function OfficeModal({ draft: initial, onClose, onSave, onDelete }) {
+  const [name, setName] = useState(initial.name);
+  const [airports, setAirports] = useState(initial.airports.length ? initial.airports : [""]);
+  const setAirportAt = (i, v) => setAirports((prev) => prev.map((a, j) => (j === i ? v : a)));
+  const addAirport = () => setAirports((prev) => [...prev, ""]);
+  const removeAirport = (i) => setAirports((prev) => prev.filter((_, j) => j !== i));
+  const canSave = name.trim().length > 0;
+  return (
+    <ModalShell title={initial.isNew ? "Add Office" : "Edit Office"} onClose={onClose}
+      footer={(<>
+        {onDelete && (
+          <button type="button" onClick={onDelete} className="mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
+            <IconTrash size={14} />Delete
+          </button>
+        )}
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" disabled={!canSave} onClick={() => onSave({ name: name.trim(), airports: airports.map((a) => a.trim()).filter(Boolean) })}
+          className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308] disabled:cursor-not-allowed disabled:opacity-45">Save</button>
+      </>)}>
+      <Field label="Office Name">
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fukuoka" className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+      </Field>
+      <Field label="Airports">
+        <div className="flex flex-col gap-2">
+          {airports.map((a, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input type="text" value={a} onChange={(e) => setAirportAt(i, e.target.value)} placeholder="e.g. Fukuoka Airport"
+                className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <button type="button" onClick={() => removeAirport(i)} className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={14} /></button>
+            </div>
+          ))}
+          <button type="button" onClick={addAirport} className="inline-flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+            <IconPlus size={12} />Add airport
+          </button>
+        </div>
+      </Field>
+    </ModalShell>
+  );
+}
 const PRICING_TABS = ["Tour Charters", "Airport Price", "Customized Price", "Offices", "Vehicle Lineup"];
 
 function PricingCMSView() {
@@ -1548,20 +1667,31 @@ function PricingCMSView() {
   const [rows, setRows] = useState(SIGHTSEEING_PRICE_SEED);
   const [airportRows, setAirportRows] = useState(AIRPORT_PRICE_SEED);
   const [customRows, setCustomRows] = useState(CUSTOMIZED_PRICE_SEED);
-  const [officeFilter, setOfficeFilter] = useState("All");
+  const [officeFilter, setOfficeFilter] = useState("Tokyo");
   const [editingAirportRow, setEditingAirportRow] = useState(null);
   const [editingSightseeingRow, setEditingSightseeingRow] = useState(null);
   const [editingCustomRow, setEditingCustomRow] = useState(null);
+  const [officeList, setOfficeList] = useState(() => OFFICE_LOCATIONS.map((loc) => ({ name: loc, airports: OFFICE_AIRPORTS[loc] ?? [] })));
+  const [editingOffice, setEditingOffice] = useState(null);
+  const [vehicleLineup, setVehicleLineup] = useState(VEHICLE_LINEUP_SEED);
+  const [editingVehicle, setEditingVehicle] = useState(null);
 
   const sightseeingCounts = useMemo(() => officeCounts(rows), [rows]);
   const airportCounts = useMemo(() => officeCounts(airportRows), [airportRows]);
   const customCounts = useMemo(() => officeCounts(customRows), [customRows]);
+  const vehicleLineupCounts = useMemo(() => officeCounts(vehicleLineup), [vehicleLineup]);
 
-  const filteredSightseeing = officeFilter === "All" ? rows : rows.filter((r) => r.office === officeFilter);
-  const filteredAirport = officeFilter === "All" ? airportRows : airportRows.filter((r) => r.office === officeFilter);
-  const filteredCustom = officeFilter === "All" ? customRows : customRows.filter((r) => r.office === officeFilter);
+  const officeStats = useMemo(() => officeList.map((o) => {
+    const tally = (list) => { const forOffice = list.filter((r) => (r.offices || []).includes(o.name)); return { active: forOffice.filter((r) => r.available).length, total: forOffice.length }; };
+    return { office: o.name, airports: o.airports, tourCharters: tally(rows), airportTransfers: tally(airportRows), customizedPrice: tally(customRows) };
+  }), [officeList, rows, airportRows, customRows]);
 
-  const handleRefresh = () => { setRows(SIGHTSEEING_PRICE_SEED); setAirportRows(AIRPORT_PRICE_SEED); setCustomRows(CUSTOMIZED_PRICE_SEED); setOfficeFilter("All"); };
+  const filteredSightseeing = rows.filter((r) => (r.offices || []).includes(officeFilter));
+  const filteredAirport = airportRows.filter((r) => (r.offices || []).includes(officeFilter));
+  const filteredCustom = customRows.filter((r) => (r.offices || []).includes(officeFilter));
+  const filteredVehicleLineup = vehicleLineup.filter((v) => (v.offices || []).includes(officeFilter));
+
+  const handleRefresh = () => { setRows(SIGHTSEEING_PRICE_SEED); setAirportRows(AIRPORT_PRICE_SEED); setCustomRows(CUSTOMIZED_PRICE_SEED); setVehicleLineup(VEHICLE_LINEUP_SEED); setOfficeFilter("Tokyo"); };
 
   const th = "px-4 py-3 text-xs font-semibold uppercase tracking-wide";
   return (
@@ -1589,14 +1719,13 @@ function PricingCMSView() {
           <div className="overflow-hidden rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Type","Vehicle Name","Office","Owner","Available","Half Day ¥","Full Day ¥","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Office","Owner","Available","Half Day ¥","Full Day ¥","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
                 {filteredSightseeing.map((row) => (
                   <tr key={row.id} onClick={() => setEditingSightseeingRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
-                    <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleType}</td>
-                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.office}</td>
+                    <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
+                    <td className="px-4 py-3"><OfficeTags offices={row.offices} /></td>
                     <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(row.halfDayPrice)}</td>
@@ -1618,21 +1747,22 @@ function PricingCMSView() {
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Type","Vehicle Name","Office","Airports & Fixed Fee","Owner","Available","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Office","Pricing Table","Owner","Available","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
                 {filteredAirport.map((row) => (
                   <tr key={row.id} onClick={() => setEditingAirportRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
-                    <td className="px-4 py-3 align-top font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleType}</td>
-                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{row.office}</td>
+                    <td className="px-4 py-3 align-top font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
+                    <td className="px-4 py-3 align-top"><OfficeTags offices={row.offices} /></td>
                     <td className="px-4 py-3 align-top">
                       {row.legs.length === 0 ? <span style={{ color: "var(--text-3)" }}>—</span> : (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
                           {row.legs.map((leg) => (
-                            <div key={leg.airport} className="flex items-center gap-2 text-xs">
+                            <div key={leg.airport} className="flex flex-wrap items-center gap-1.5 text-xs">
                               <span className="whitespace-nowrap rounded-md border px-2 py-0.5 font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{AIRPORT_CODES[leg.airport] || leg.airport}</span>
-                              <span className="tabular-nums font-semibold" style={{ color: "var(--text-1)" }}>{formatPrice(leg.fixedFee)}</span>
+                              {(leg.ranges ?? []).map((r, ri) => (
+                                <span key={ri} className="whitespace-nowrap rounded-md border px-1.5 py-0.5 tabular-nums" style={{ borderColor: "var(--border-soft)", color: "var(--text-2)" }}>{r.name || `Range ${ri + 1}`} {formatPrice(r.fixedFee)}</span>
+                              ))}
                             </div>
                           ))}
                         </div>
@@ -1663,7 +1793,7 @@ function PricingCMSView() {
                 {filteredCustom.map((row) => (
                   <tr key={row.id} onClick={() => setEditingCustomRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.office}</td>
+                    <td className="px-4 py-3"><OfficeTags offices={row.offices} /></td>
                     <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setCustomRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.minDurationHrs)}</td>
@@ -1685,6 +1815,102 @@ function PricingCMSView() {
               onSave={(u) => { setCustomRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingCustomRow(null); }} />
           )}
         </>
+      ) : activeTab === "Offices" ? (
+        <>
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setEditingOffice({ isNew: true, name: "", airports: [] })}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#FACC15] px-4 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
+              <IconPlus size={16} />Add Office
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {officeStats.map((s) => (
+              <div key={s.office} className="relative rounded-xl border p-4 shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                <button type="button" onClick={() => setEditingOffice({ isNew: false, name: s.office, airports: s.airports })}
+                  title="Edit office" className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600">
+                  <IconPencil size={16} />
+                </button>
+                <p className="pr-7 text-base font-bold" style={{ color: "var(--text-1)" }}>{s.office}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {s.airports.length === 0 ? <span className="text-xs" style={{ color: "var(--text-3)" }}>No airports</span> : s.airports.map((a) => (
+                    <span key={a} className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{AIRPORT_CODES[a] || a}</span>
+                  ))}
+                </div>
+                <div className="mt-4 flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: "var(--border-soft)" }}>
+                  {[["Tour Charters", s.tourCharters], ["Airport Transfers", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
+                    <div key={label} className="flex items-center justify-between text-sm">
+                      <span style={{ color: "var(--text-2)" }}>{label}</span>
+                      <span className="font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>{stat.active}<span className="font-normal" style={{ color: "var(--text-3)" }}> / {stat.total} active</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          {editingOffice && (
+            <OfficeModal draft={editingOffice} onClose={() => setEditingOffice(null)}
+              onSave={(updated) => {
+                setOfficeList((prev) => editingOffice.isNew
+                  ? [...prev, updated]
+                  : prev.map((o) => o.name === editingOffice.name ? updated : o));
+                setEditingOffice(null);
+              }}
+              onDelete={editingOffice.isNew ? undefined : () => {
+                setOfficeList((prev) => prev.filter((o) => o.name !== editingOffice.name));
+                setEditingOffice(null);
+              }} />
+          )}
+        </>
+      ) : activeTab === "Vehicle Lineup" ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={vehicleLineupCounts} />
+            <button type="button" onClick={() => setEditingVehicle({ isNew: true, id: null, vehicleType: "", vehicleName: "", offices: [], ownerByOffice: {} })}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#FACC15] px-4 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
+              <IconPlus size={16} />Add Vehicle
+            </button>
+          </div>
+          <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+                {["Vehicle Type","Vehicle Name","Office","Owner","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+              </tr></thead>
+              <tbody>
+                {filteredVehicleLineup.map((v) => (
+                  <tr key={v.id} onClick={() => setEditingVehicle(v)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                    <td className="px-4 py-3 align-top font-medium" style={{ color: "var(--text-1)" }}>{v.vehicleType}</td>
+                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{v.vehicleName}</td>
+                    <td className="px-4 py-3 align-top"><OfficeTags offices={v.offices} /></td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-wrap gap-1">
+                        {v.offices.map((o) => (
+                          <span key={o} className="whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o} · {v.ownerByOffice[o] || "—"}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingVehicle(v); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
+                  </tr>
+                ))}
+                {filteredVehicleLineup.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-xs" style={{ color: "var(--text-3)" }}>No vehicles registered for {officeFilter}.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {editingVehicle && (
+            <VehicleLineupModal vehicle={editingVehicle} onClose={() => setEditingVehicle(null)}
+              onSave={(updated) => {
+                setVehicleLineup((prev) => editingVehicle.isNew
+                  ? [...prev, { ...updated, id: `v-${Date.now()}` }]
+                  : prev.map((v) => v.id === editingVehicle.id ? { id: v.id, ...updated } : v));
+                setEditingVehicle(null);
+              }}
+              onDelete={editingVehicle.isNew ? undefined : () => {
+                setVehicleLineup((prev) => prev.filter((v) => v.id !== editingVehicle.id));
+                setEditingVehicle(null);
+              }} />
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-24" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
           <p className="text-lg font-medium" style={{ color: "var(--text-2)" }}>{activeTab}</p>
@@ -1698,17 +1924,24 @@ function PricingCMSView() {
 function SightseeingPriceModal({ row, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
+  const toggleOffice = (o) => patch({ offices: draft.offices.includes(o) ? draft.offices.filter((x) => x !== o) : [...draft.offices, o] });
   return (
     <ModalShell title="Edit Vehicle Pricing" onClose={onClose}
       footer={(<>
         <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
         <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
       </>)}>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
-        <Field label="Office"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.office}</p></Field>
       </div>
+      <Field label="Offices">
+        <div className="flex flex-wrap gap-1.5">
+          {OFFICE_LOCATIONS.map((o) => (
+            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
+          ))}
+        </div>
+      </Field>
       <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
       <div className="grid grid-cols-2 gap-3">
@@ -1719,31 +1952,133 @@ function SightseeingPriceModal({ row, onClose, onSave }) {
   );
 }
 
+function RangeEditorModal({ airport, range, onSave, onDelete, onClose }) {
+  const [name, setName] = useState(range.name ?? "New range");
+  const [radiusKm, setRadiusKm] = useState(range.radiusKm ?? 0);
+  const fallbackCenter = AIRPORT_MAP_LOCATIONS[airport] ?? { title: airport, address: "" };
+  const [center, setCenter] = useState(range.center ?? fallbackCenter);
+  const [query, setQuery] = useState((range.center ?? fallbackCenter).title);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestions = searchMapLocations(query);
+  const circleSize = Math.max(70, Math.min(260, radiusKm * 2.6));
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className="w-full max-w-lg overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <p className="text-base font-bold text-gray-900">Fix Rate Range</p>
+            <p className="mt-0.5 text-xs text-gray-500">{airportDisplayName(airport)} · applies to this vehicle only</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><IconX size={16} /></button>
+        </div>
+        <div className="max-h-[75vh] overflow-y-auto p-5">
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Fixed Range Name</label>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+
+          <div className="mt-4 grid grid-cols-[1fr_110px] gap-3">
+            <div className="relative">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Center Address</label>
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <IconMapPin size={14} className="shrink-0 text-gray-400" />
+                <input type="text" value={query} onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)}
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+                <IconSearch size={14} className="shrink-0 text-gray-400" />
+              </div>
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
+                  {suggestions.map((loc) => (
+                    <li key={loc.title}>
+                      <button type="button" onClick={() => { setCenter(loc); setQuery(loc.title); setShowSuggestions(false); }}
+                        className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-gray-50">
+                        <span className="text-sm font-medium text-gray-900">{loc.title}</span>
+                        <span className="text-xs text-gray-500">{loc.address}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Radius</label>
+              <div className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <input type="number" min="0" value={radiusKm} onChange={(e) => setRadiusKm(parseInt(e.target.value,10)||0)}
+                  className="w-full min-w-0 bg-transparent text-sm tabular-nums outline-none" />
+                <span className="shrink-0 text-xs text-gray-400">km</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-4 h-56 overflow-hidden rounded-xl border border-gray-200">
+            <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #eef1fb 0%, #eef3f7 55%, #e7f0f6 100%)" }} />
+            <div className="absolute inset-0 opacity-70" style={{ backgroundImage: "linear-gradient(rgba(148,163,184,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.18) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+            <div className="absolute rounded-2xl" style={{ left: "4%", top: "10%", width: "22%", height: "20%", background: "rgba(134,239,172,0.35)" }} />
+            <div className="absolute inset-y-0 right-0" style={{ width: "36%", background: "linear-gradient(200deg, rgba(147,197,253,0.55), rgba(147,197,253,0.15) 70%)", clipPath: "polygon(35% 0, 100% 0, 100% 100%, 0 100%)" }} />
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 85 Q40 60 55 40 T100 5" stroke="#FACC15" strokeWidth="1.6" fill="none" /></svg>
+            <span className="absolute left-2.5 top-2.5 rounded-md bg-white/90 px-2 py-1 text-[10px] font-semibold text-gray-700 shadow">{center.title}</span>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-gray-400/70 bg-gray-400/10 transition-all" style={{ width: circleSize, height: circleSize }} />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
+              <IconMapPin size={26} className="text-red-500 drop-shadow" style={{ fill: "currentColor" }} />
+            </div>
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 translate-y-2 whitespace-nowrap rounded-full bg-gray-900/85 px-2 py-0.5 text-[10px] font-semibold text-white">{radiusKm} km</span>
+            <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 text-[10px] font-medium text-gray-500">
+              <span className="h-px w-8 bg-gray-500" />50 km
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">{center.address}</p>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3.5">
+          <button type="button" onClick={onDelete} className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 transition hover:text-red-700"><IconTrash size={14} />Delete range</button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">Cancel</button>
+            <button type="button" onClick={() => onSave({ name, radiusKm, center })} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">Set range</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 function AirportPriceModal({ row, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
+  const [editingRange, setEditingRange] = useState(null);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
-  const availableAirports = OFFICE_AIRPORTS[row.office] || [];
+  const availableAirports = [...new Set((draft.offices || []).flatMap((o) => OFFICE_AIRPORTS[o] || []))];
+  const toggleOffice = (o) => patch({ offices: draft.offices.includes(o) ? draft.offices.filter((x) => x !== o) : [...draft.offices, o] });
   const toggleAirport = (airport) => setDraft((prev) => {
     const exists = prev.legs.some((l) => l.airport === airport);
     if (exists) return { ...prev, legs: prev.legs.filter((l) => l.airport !== airport) };
-    return { ...prev, legs: [...prev.legs, { airport, fixedFee: 0 }] };
+    return { ...prev, legs: [...prev.legs, { airport, ranges: [{ name: "Standard", radiusKm: 15, fixedFee: 0, center: null }] }] };
   });
-  const setFee = (airport, fee) => setDraft((prev) => ({ ...prev, legs: prev.legs.map((l) => l.airport === airport ? { ...l, fixedFee: fee } : l) }));
+  const patchLeg = (airport, fn) => setDraft((prev) => ({ ...prev, legs: prev.legs.map((l) => l.airport === airport ? fn(l) : l) }));
+  const addRange = (airport) => patchLeg(airport, (l) => {
+    const lastRadius = l.ranges[l.ranges.length - 1]?.radiusKm ?? 0;
+    return { ...l, ranges: [...l.ranges, { name: "New range", radiusKm: lastRadius + 15, fixedFee: 0, center: null }] };
+  });
+  const setFee = (airport, index, fee) => patchLeg(airport, (l) => ({ ...l, ranges: l.ranges.map((r, i) => i === index ? { ...r, fixedFee: fee } : r) }));
+  const updateRange = (airport, index, updated) => patchLeg(airport, (l) => ({ ...l, ranges: l.ranges.map((r, i) => i === index ? { ...r, ...updated } : r) }));
+  const deleteRange = (airport, index) => patchLeg(airport, (l) => ({ ...l, ranges: l.ranges.filter((_, i) => i !== index) }));
 
   return (
-    <ModalShell title="Edit Airport Price" onClose={onClose}
+    <ModalShell title="Edit Airport Transfer" onClose={onClose}
       footer={(<>
         <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
         <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
       </>)}>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
-        <Field label="Office"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.office}</p></Field>
       </div>
+      <Field label="Offices">
+        <div className="flex flex-wrap gap-1.5">
+          {OFFICE_LOCATIONS.map((o) => (
+            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
+          ))}
+        </div>
+      </Field>
       <Field label="Airports">
         <div className="flex flex-wrap gap-1.5">
-          {availableAirports.map((a) => {
+          {availableAirports.length === 0 ? <span className="text-xs" style={{ color: "var(--text-3)" }}>Select an office to see its airports.</span> : availableAirports.map((a) => {
             const active = draft.legs.some((l) => l.airport === a);
             return <button key={a} type="button" onClick={() => toggleAirport(a)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={active ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{a}</button>;
           })}
@@ -1752,16 +2087,50 @@ function AirportPriceModal({ row, onClose, onSave }) {
       <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
       {draft.legs.length > 0 && (
-        <Field label="Fixed Fee per Airport">
-          <div className="flex flex-col gap-2">
+        <Field label="Pricing Map">
+          <div className="flex flex-col gap-3">
             {draft.legs.map((leg) => (
-              <div key={leg.airport} className="flex items-center gap-3 rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
-                <span className="w-40 truncate text-sm font-medium" style={{ color: "var(--text-1)" }}>{leg.airport} <span className="text-xs" style={{ color: "var(--text-3)" }}>({AIRPORT_CODES[leg.airport]})</span></span>
-                <input type="number" min="0" value={leg.fixedFee} onChange={(e) => setFee(leg.airport, parseInt(e.target.value,10)||0)} className="ml-auto w-32 rounded-lg border px-3 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <div key={leg.airport} className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{leg.airport} <span className="text-xs font-normal" style={{ color: "var(--text-3)" }}>({AIRPORT_CODES[leg.airport]})</span></p>
+                  <button type="button" onClick={() => addRange(leg.airport)}
+                    className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+                    <IconPlus size={12} />Add range
+                  </button>
+                </div>
+                {leg.ranges.length > 0 && (
+                  <div className="mt-2.5 grid grid-cols-[1fr_110px_120px] gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
+                    <span>Fixed Range Name</span><span>Fixed Fee ¥</span><span>Fix Rate Range</span>
+                  </div>
+                )}
+                <div className="mt-1 flex flex-col gap-1.5">
+                  {leg.ranges.map((r, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_110px_120px] items-center gap-2">
+                      <button type="button" onClick={() => setEditingRange({ airport: leg.airport, index: i })}
+                        className="truncate rounded-lg border px-3 py-1.5 text-left text-sm outline-none transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-1)" }}>
+                        {r.name || "Unnamed range"}
+                      </button>
+                      <input type="number" min="0" value={r.fixedFee} onChange={(e) => setFee(leg.airport, i, parseInt(e.target.value,10)||0)}
+                        className="w-full min-w-0 rounded-lg border px-2 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                      <button type="button" onClick={() => setEditingRange({ airport: leg.airport, index: i })}
+                        className="flex items-center justify-between gap-1 rounded-lg border px-2.5 py-1.5 text-sm outline-none transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
+                        {r.radiusKm} km<IconMapPin size={13} className="shrink-0" style={{ color: "var(--text-3)" }} />
+                      </button>
+                    </div>
+                  ))}
+                  {leg.ranges.length === 0 && <p className="rounded-lg border border-dashed px-3 py-2.5 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>No ranges configured — add one.</p>}
+                </div>
               </div>
             ))}
           </div>
         </Field>
+      )}
+      {editingRange && (
+        <RangeEditorModal airport={editingRange.airport}
+          range={draft.legs.find((l) => l.airport === editingRange.airport).ranges[editingRange.index]}
+          onClose={() => setEditingRange(null)}
+          onSave={(updated) => { updateRange(editingRange.airport, editingRange.index, updated); setEditingRange(null); }}
+          onDelete={() => { deleteRange(editingRange.airport, editingRange.index); setEditingRange(null); }} />
       )}
     </ModalShell>
   );
@@ -1770,6 +2139,7 @@ function AirportPriceModal({ row, onClose, onSave }) {
 function CustomizedPriceModal({ row, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
+  const toggleOffice = (o) => patch({ offices: draft.offices.includes(o) ? draft.offices.filter((x) => x !== o) : [...draft.offices, o] });
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
   const num = fieldBox + " tabular-nums";
   return (
@@ -1778,11 +2148,17 @@ function CustomizedPriceModal({ row, onClose, onSave }) {
         <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
         <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
       </>)}>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
-        <Field label="Office"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.office}</p></Field>
       </div>
+      <Field label="Offices">
+        <div className="flex flex-wrap gap-1.5">
+          {OFFICE_LOCATIONS.map((o) => (
+            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
+          ))}
+        </div>
+      </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Owner</p><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></div>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
       <Field label="Min. Fare (hrs)"><input type="text" inputMode="numeric" value={draft.minDurationHrs ?? ""} onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })} placeholder="0" className={`${num} max-w-[110px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
@@ -1839,6 +2215,69 @@ function CustomizedPriceModal({ row, onClose, onSave }) {
           </Field>
         </div>
       </div>
+    </ModalShell>
+  );
+}
+
+function VehicleLineupModal({ vehicle: initial, onClose, onSave, onDelete }) {
+  const [draft, setDraft] = useState(initial);
+  const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
+  const toggleOffice = (o) => setDraft((prev) => {
+    const has = prev.offices.includes(o);
+    const offices = has ? prev.offices.filter((x) => x !== o) : [...prev.offices, o];
+    const ownerByOffice = { ...prev.ownerByOffice };
+    if (has) delete ownerByOffice[o];
+    else ownerByOffice[o] = ownerByOffice[o] || "Self";
+    return { ...prev, offices, ownerByOffice };
+  });
+  const setOwnerForOffice = (office, owner) => setDraft((prev) => ({ ...prev, ownerByOffice: { ...prev.ownerByOffice, [office]: owner } }));
+  const canSave = draft.vehicleType.trim().length > 0 && draft.vehicleName.trim().length > 0 && draft.offices.length > 0;
+  return (
+    <ModalShell title={initial.isNew ? "Add Vehicle" : "Edit Vehicle"} onClose={onClose}
+      footer={(<>
+        {onDelete && (
+          <button type="button" onClick={onDelete} className="mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
+            <IconTrash size={14} />Delete
+          </button>
+        )}
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" disabled={!canSave} onClick={() => onSave({ vehicleType: draft.vehicleType.trim(), vehicleName: draft.vehicleName.trim(), offices: draft.offices, ownerByOffice: draft.ownerByOffice })}
+          className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308] disabled:cursor-not-allowed disabled:opacity-45">Save</button>
+      </>)}>
+      <Field label="Vehicle Type">
+        <div className="flex flex-wrap gap-1.5">
+          {VEHICLE_TYPES.map((t) => (
+            <button key={t} type="button" onClick={() => patch({ vehicleType: t })}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${draft.vehicleType === t ? "border-[#121621] bg-[#121621] text-white" : "hover:bg-black/5"}`}
+              style={draft.vehicleType === t ? {} : { borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <Field label="Vehicle Name">
+        <input type="text" value={draft.vehicleName} onChange={(e) => patch({ vehicleName: e.target.value })} placeholder="e.g. Toyota Hiace Commuter"
+          className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+      </Field>
+      <Field label="Office">
+        <div className="flex flex-wrap gap-1.5">
+          {OFFICE_LOCATIONS.map((o) => (
+            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
+          ))}
+        </div>
+      </Field>
+      {draft.offices.length > 0 && (
+        <Field label="Owner">
+          <div className="flex flex-col gap-2">
+            {draft.offices.map((o) => (
+              <div key={o} className="flex items-center justify-between rounded-lg border px-3 py-2" style={{ borderColor: "var(--border)" }}>
+                <span className="text-sm font-medium" style={{ color: "var(--text-1)" }}>{o}</span>
+                <ChipGroup options={["Self", "Partner"]} value={draft.ownerByOffice[o] || "Self"} onChange={(v) => setOwnerForOffice(o, v)} />
+              </div>
+            ))}
+          </div>
+        </Field>
+      )}
     </ModalShell>
   );
 }
@@ -2127,13 +2566,562 @@ function PlaceholderView({ title }) {
   );
 }
 
+/* ---------------- Itinerary Editor (reachable via the sidebar's System dropdown) ---------------- */
+const ITIN_PALETTE = ["#F33232", "#F4A639", "#F4B926", "#10b981", "#3b82f6"];
+const ZG_GRADIENT = "linear-gradient(45deg, #F33232 19.53%, #F4A639 76.43%)";
+function MiniDatePicker({ icon: PickerIcon, label, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [activeSeg, setActiveSeg] = useState(null);
+  const ref = useRef(null);
+  const segRefs = useRef({});
+  const today = new Date();
+  const parsed = value ? new Date(value + "T00:00:00") : null;
+  const [viewYear, setViewYear] = useState((parsed || today).getFullYear());
+  const [viewMonth, setViewMonth] = useState((parsed || today).getMonth());
+
+  const SEG_ORDER = ["yyyy", "mm", "dd"];
+  const SEG_LEN = { yyyy: 4, mm: 2, dd: 2 };
+  const valueParts = {
+    yyyy: parsed ? String(parsed.getFullYear()) : "",
+    mm: parsed ? String(parsed.getMonth() + 1).padStart(2, "0") : "",
+    dd: parsed ? String(parsed.getDate()).padStart(2, "0") : "",
+  };
+  const [parts, setParts] = useState(valueParts);
+  useEffect(() => { if (activeSeg === null) setParts(valueParts); }, [value, activeSeg]);
+
+  useEffect(() => {
+    if (!open && activeSeg === null) return;
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); if (activeSeg !== null) { finalizeParts(parts); setActiveSeg(null); } }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, activeSeg, parts]);
+
+  useEffect(() => { if (activeSeg) segRefs.current[activeSeg]?.focus(); }, [activeSeg]);
+
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const isSelected = (d) => parsed && parsed.getFullYear() === viewYear && parsed.getMonth() === viewMonth && parsed.getDate() === d;
+  const isToday = (d) => today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === d;
+  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); } else setViewMonth((m) => m - 1); };
+  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); } else setViewMonth((m) => m + 1); };
+  const nextSegOf = (seg) => SEG_ORDER[SEG_ORDER.indexOf(seg) + 1] || null;
+  const prevSegOf = (seg) => SEG_ORDER[SEG_ORDER.indexOf(seg) - 1] || null;
+
+  const finalizeParts = (p) => {
+    const yyyy = parseInt(p.yyyy, 10) || today.getFullYear();
+    let mo = parseInt(p.mm, 10); if (!mo || mo < 1) mo = 1; if (mo > 12) mo = 12;
+    const daysInM = new Date(yyyy, mo, 0).getDate();
+    let da = parseInt(p.dd, 10); if (!da || da < 1) da = 1; if (da > daysInM) da = daysInM;
+    onChange(fmt(yyyy, mo - 1, da));
+    setViewYear(yyyy);
+    setViewMonth(mo - 1);
+  };
+
+  const openSegment = (seg, e) => {
+    e.stopPropagation();
+    setOpen(false);
+    setActiveSeg(seg);
+  };
+
+  const onSegKeyDown = (seg, e) => {
+    if (e.key >= "0" && e.key <= "9") {
+      e.preventDefault();
+      const cur = parts[seg] || "";
+      const nb = cur.length >= SEG_LEN[seg] ? e.key : cur + e.key;
+      let advance = false;
+      let commitVal = nb;
+      if (seg === "yyyy") {
+        advance = nb.length === 4;
+      } else {
+        const cutoff = seg === "mm" ? 2 : 4;
+        if (nb.length === 1 && parseInt(nb, 10) >= cutoff) { commitVal = "0" + nb; advance = true; }
+        else if (nb.length === 2) advance = true;
+      }
+      const nextParts = { ...parts, [seg]: commitVal };
+      setParts(nextParts);
+      if (advance) {
+        finalizeParts(nextParts);
+        setActiveSeg(nextSegOf(seg));
+      }
+    } else if (e.key === "Backspace") {
+      e.preventDefault();
+      const cur = parts[seg] || "";
+      if (cur) {
+        const nextParts = { ...parts, [seg]: "" };
+        setParts(nextParts);
+      } else {
+        const ps = prevSegOf(seg);
+        if (ps) setActiveSeg(ps);
+      }
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const ps = prevSegOf(seg); if (ps) setActiveSeg(ps);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const ns = nextSegOf(seg); if (ns) setActiveSeg(ns);
+    } else if (e.key === "Escape" || e.key === "Enter" || e.key === "Tab") {
+      finalizeParts(parts);
+      setActiveSeg(null);
+    }
+  };
+
+  return (
+    <div className="relative min-w-[150px] flex-1" ref={ref}>
+      <div onClick={() => { setOpen((v) => !v); if (activeSeg !== null) { finalizeParts(parts); setActiveSeg(null); } }}
+        className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl bg-gray-50 px-3.5 py-2.5 transition hover:bg-gray-100">
+        <PickerIcon size={16} className="shrink-0 text-black" />
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+        <div className="ml-auto flex items-center gap-0.5 text-sm font-semibold">
+          {SEG_ORDER.map((seg, i) => (
+            <React.Fragment key={seg}>
+              {i > 0 && <span className="text-gray-300">/</span>}
+              <button type="button" ref={(el) => (segRefs.current[seg] = el)} onClick={(e) => openSegment(seg, e)} onKeyDown={(e) => onSegKeyDown(seg, e)}
+                className={`rounded px-0.5 text-right tabular-nums outline-none ${activeSeg === seg ? "bg-orange-100 text-orange-700" : parts[seg] ? "text-gray-900" : "text-gray-400"}`}>
+                {parts[seg] || seg.toUpperCase()}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-3 text-left shadow-xl">
+          <div className="mb-2 flex items-center justify-between">
+            <button type="button" onClick={prevMonth} className="rounded p-1 text-gray-500 hover:bg-gray-100"><IconChevronRight size={14} className="rotate-180" /></button>
+            <span className="text-xs font-bold text-gray-700">{monthLabel}</span>
+            <button type="button" onClick={nextMonth} className="rounded p-1 text-gray-500 hover:bg-gray-100"><IconChevronRight size={14} /></button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-gray-400">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => <span key={d}>{d}</span>)}
+          </div>
+          <div className="mt-1 grid grid-cols-7 gap-1">
+            {cells.map((d, i) => d === null ? <span key={i} /> : (
+              <button key={i} type="button" onClick={() => { onChange(fmt(viewYear, viewMonth, d)); setOpen(false); }}
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition ${isSelected(d) ? "text-white" : isToday(d) ? "text-orange-600 ring-1 ring-orange-300" : "text-gray-700 hover:bg-gray-100"}`}
+                style={isSelected(d) ? { background: ZG_GRADIENT } : undefined}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [activeSeg, setActiveSeg] = useState(null);
+  const ref = useRef(null);
+  const segRefs = useRef({});
+  const SEG_ORDER = ["hh", "mm"];
+  const SEG_LEN = { hh: 2, mm: 2 };
+  const m0 = value ? value.match(/^(\d{2}):(\d{2})$/) : null;
+  const valueParts = { hh: m0 ? m0[1] : "", mm: m0 ? m0[2] : "" };
+  const [parts, setParts] = useState(valueParts);
+  useEffect(() => { if (activeSeg === null) setParts(valueParts); }, [value, activeSeg]);
+
+  useEffect(() => {
+    if (!open && activeSeg === null) return;
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); if (activeSeg !== null) { finalizeParts(parts); setActiveSeg(null); } }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, activeSeg, parts]);
+  useEffect(() => { if (activeSeg) segRefs.current[activeSeg]?.focus(); }, [activeSeg]);
+
+  const hourOptions = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
+  const minuteOptions = ["00", "15", "30", "45"];
+  const nextSegOf = (seg) => SEG_ORDER[SEG_ORDER.indexOf(seg) + 1] || null;
+  const prevSegOf = (seg) => SEG_ORDER[SEG_ORDER.indexOf(seg) - 1] || null;
+
+  const finalizeParts = (p) => {
+    if (!p.hh && !p.mm) return;
+    const hh = Math.min(23, parseInt(p.hh, 10) || 0);
+    const mm = Math.min(59, parseInt(p.mm, 10) || 0);
+    onChange(`${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
+  };
+
+  const openSegment = (seg, e) => { e.stopPropagation(); setOpen(false); setActiveSeg(seg); };
+
+  const onSegKeyDown = (seg, e) => {
+    if (e.key >= "0" && e.key <= "9") {
+      e.preventDefault();
+      const cur = parts[seg] || "";
+      const nb = cur.length >= SEG_LEN[seg] ? e.key : cur + e.key;
+      const cutoff = seg === "hh" ? 3 : 6;
+      let advance = false;
+      let commitVal = nb;
+      if (nb.length === 1 && parseInt(nb, 10) >= cutoff) { commitVal = "0" + nb; advance = true; }
+      else if (nb.length === 2) advance = true;
+      const nextParts = { ...parts, [seg]: commitVal };
+      setParts(nextParts);
+      if (advance) {
+        finalizeParts(nextParts);
+        setActiveSeg(nextSegOf(seg));
+      }
+    } else if (e.key === "Backspace") {
+      e.preventDefault();
+      const cur = parts[seg] || "";
+      if (cur) setParts({ ...parts, [seg]: cur.slice(0, -1) });
+      else { const ps = prevSegOf(seg); if (ps) setActiveSeg(ps); }
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const ps = prevSegOf(seg); if (ps) setActiveSeg(ps);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const ns = nextSegOf(seg); if (ns) setActiveSeg(ns);
+    } else if (e.key === "Escape" || e.key === "Enter" || e.key === "Tab") {
+      finalizeParts(parts);
+      setActiveSeg(null);
+    }
+  };
+
+  return (
+    <div className="relative min-w-[150px] flex-1" ref={ref}>
+      <div onClick={() => { setOpen((v) => !v); if (activeSeg !== null) { finalizeParts(parts); setActiveSeg(null); } }}
+        className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-5 py-2.5 transition hover:bg-gray-50">
+        <PickerIcon size={16} className="shrink-0 text-black" />
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+        <div className="ml-auto flex items-center gap-0.5 text-sm font-semibold">
+          {SEG_ORDER.map((seg, i) => (
+            <React.Fragment key={seg}>
+              {i > 0 && <span className="text-gray-300">:</span>}
+              <button type="button" ref={(el) => (segRefs.current[seg] = el)} onClick={(e) => openSegment(seg, e)} onKeyDown={(e) => onSegKeyDown(seg, e)}
+                className={`rounded px-0.5 text-right tabular-nums outline-none ${activeSeg === seg ? "bg-orange-100 text-orange-700" : parts[seg] ? "text-gray-900" : "text-gray-400"}`}>
+                {parts[seg] || seg.toUpperCase()}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+      {open && (
+        <div className="absolute left-1/2 top-full z-30 mt-2 flex w-36 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          <div className="max-h-72 flex-1 overflow-y-auto border-r border-gray-100 p-1.5">
+            {hourOptions.map((h) => {
+              const active = value && value.slice(0, 2) === h;
+              return (
+                <button key={h} type="button"
+                  onClick={() => onChange(`${h}:${value ? value.slice(3, 5) : "00"}`)}
+                  className={`block w-full rounded-lg px-2 py-1.5 text-center text-xs font-medium transition ${active ? "text-white" : "text-gray-700 hover:bg-gray-100"}`}
+                  style={active ? { background: ZG_GRADIENT } : undefined}>
+                  {h}
+                </button>
+              );
+            })}
+          </div>
+          <div className="max-h-72 flex-1 overflow-y-auto p-1.5">
+            {minuteOptions.map((m) => {
+              const active = value && value.slice(3, 5) === m;
+              return (
+                <button key={m} type="button"
+                  onClick={() => { onChange(`${value ? value.slice(0, 2) : "00"}:${m}`); setOpen(false); }}
+                  className={`block w-full rounded-lg px-2 py-1.5 text-center text-xs font-medium transition ${active ? "text-white" : "text-gray-700 hover:bg-gray-100"}`}
+                  style={active ? { background: ZG_GRADIENT } : undefined}>
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function AirportDirectionPicker({ fromValue, toValue, onChangeFrom, onChangeTo, onSwitchDir }) {
+  const [activeDir, setActiveDir] = useState(null);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const airports = Object.keys(AIRPORT_CODES);
+  const value = activeDir === "from" ? fromValue : activeDir === "to" ? toValue : null;
+  const onChange = activeDir === "from" ? onChangeFrom : onChangeTo;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div className="w-full" ref={ref}>
+      <div className="flex gap-1.5 rounded-full border border-gray-200 bg-white p-1.5 text-sm font-semibold">
+        {["from", "to"].map((dir) => (
+          <button key={dir} type="button" onClick={() => { const changed = activeDir !== dir; setActiveDir(dir); setOpen(true); if (changed) onSwitchDir && onSwitchDir(dir); }}
+            className={`flex-1 rounded-full py-2 text-center transition-colors ${activeDir === dir ? "text-white" : "text-gray-400 hover:text-gray-600"}`}
+            style={activeDir === dir ? { background: ZG_GRADIENT } : undefined}>
+            {dir === "from" ? "From Airport" : "To Airport"}
+          </button>
+        ))}
+      </div>
+      {activeDir && (
+      <div className="relative mt-2">
+        <button type="button" onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center gap-2.5 rounded-xl bg-gray-50 px-3.5 py-2.5 text-left transition hover:bg-gray-100">
+          <IconPlane size={16} className="shrink-0 text-black" />
+          <span className={`min-w-0 flex-1 truncate text-sm font-medium ${value ? "text-gray-900" : "text-gray-400"}`}>
+            {value ? airportDisplayName(value) : "Please select an airport"}
+          </span>
+          <IconChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && (
+          <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-xl">
+            {airports.map((a) => (
+              <button key={a} type="button" onClick={() => { onChange(a); setOpen(false); }}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${a === value ? "bg-orange-50 font-semibold text-orange-700" : "text-gray-700 hover:bg-gray-50"}`}>
+                <span className="truncate">{airportDisplayName(a)}</span>
+                {a === value && <IconCheck size={14} className="shrink-0" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
+    </div>
+  );
+}
+function itinRowsFromWaypoints(wp, fromAirport, toAirport) {
+  return [
+    { key: "pickup", label: "Start Spot", name: (fromAirport || toAirport) ? wp.pickup : "", meta: fromAirport && wp.pickupTime ? `Departs ${wp.pickupTime}` : "", mapLocation: wp.pickupMapLocation, icon: IconPlane },
+    ...wp.stopovers.map((s, i) => ({ key: `stop-${i}`, label: `Stop ${i + 1}`, name: s.location, meta: s.waitTime ? `Standby ${s.waitTime}` : "", mapLocation: s.mapLocation, icon: IconMapPin })),
+    { key: "dropoff", label: "End Spot", name: (fromAirport || toAirport) ? wp.dropoff : "", meta: toAirport ? "Final destination" : "", mapLocation: wp.dropoffMapLocation, icon: IconFlag },
+  ];
+}
+function ItinItineraryMap({ rows, zoom }) {
+  const coords = rows.map((r, i) => ({ x: rows.length === 1 ? 50 : 14 + (72 * i) / (rows.length - 1), y: 26 + (hashRouteName(r.name + i) % 46) }));
+  return (
+    <div className="relative h-full min-h-[420px] overflow-hidden rounded-[28px] border" style={{ borderColor: "rgba(244,166,57,0.22)" }}>
+      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #eef1fb 0%, #eef3f7 55%, #e7f0f6 100%)" }} />
+      <div className="absolute inset-0 opacity-70" style={{ backgroundImage: "linear-gradient(rgba(148,163,184,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.18) 1px, transparent 1px)", backgroundSize: "34px 34px" }} />
+      <div className="absolute rounded-3xl" style={{ left: "6%", top: "14%", width: "20%", height: "16%", background: "rgba(134,239,172,0.35)" }} />
+      <div className="absolute rounded-3xl" style={{ left: "58%", top: "56%", width: "18%", height: "14%", background: "rgba(134,239,172,0.3)" }} />
+      <div className="absolute inset-y-0 right-0" style={{ width: "34%", background: "linear-gradient(200deg, rgba(147,197,253,0.55), rgba(147,197,253,0.15) 70%)", clipPath: "polygon(40% 0, 100% 0, 100% 100%, 0 100%)" }} />
+      <div className="absolute inset-0 origin-center transition-transform duration-200" style={{ transform: `scale(${zoom})` }}>
+        {rows.map((r, i) => {
+          const c = coords[i];
+          const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
+          return (
+            <div key={r.key} className="absolute flex -translate-x-1/2 -translate-y-full flex-col items-center gap-1.5" style={{ left: `${c.x}%`, top: `${c.y}%` }}>
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-extrabold text-white shadow-lg" style={{ background: color, boxShadow: `0 6px 14px -4px ${color}99` }}>
+                {i + 1}
+                <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45" style={{ background: color }} />
+              </div>
+              <span className="max-w-[120px] truncate rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-md">{r.name || r.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+function ItineraryEditorView({ tours, onUpdateTour }) {
+  const airportTours = useMemo(() => tours.filter((t) => t.serviceType === "Airport"), [tours]);
+  const [selectedId, setSelectedId] = useState(airportTours[0]?.id ?? null);
+  const tour = airportTours.find((t) => t.id === selectedId) ?? airportTours[0] ?? null;
+  const [draftWaypoints, setDraftWaypoints] = useState(() => (tour ? structuredClone(tour.waypoints) : null));
+  const [expanded, setExpanded] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [fromAirport, setFromAirport] = useState(null);
+  const [toAirport, setToAirport] = useState(null);
+
+  useEffect(() => {
+    setDraftWaypoints(tour ? structuredClone(tour.waypoints) : null);
+    setExpanded(null);
+    setFromAirport(null);
+    setToAirport(null);
+  }, [tour?.id]);
+
+  if (!tour || !draftWaypoints) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
+        <p className="text-lg font-medium" style={{ color: "var(--text-2)" }}>No Airport templates yet</p>
+        <p className="mt-1 text-sm">Add an Airport-type template in the Catalog to edit its itinerary here.</p>
+      </div>
+    );
+  }
+
+  const patch = (p) => setDraftWaypoints((prev) => ({ ...prev, ...p }));
+  const handleFromAirportChange = (airport) => {
+    setFromAirport(airport);
+    patch({ pickup: airportDisplayName(airport), pickupMapLocation: AIRPORT_MAP_LOCATIONS[airport] ?? null });
+  };
+  const handleToAirportChange = (airport) => {
+    setToAirport(airport);
+    patch({ dropoff: airportDisplayName(airport), dropoffMapLocation: AIRPORT_MAP_LOCATIONS[airport] ?? null });
+  };
+  const handleSwitchAirportDir = (dir) => {
+    if (dir === "from") { setToAirport(null); patch({ dropoff: "", dropoffMapLocation: null }); }
+    if (dir === "to") { setFromAirport(null); patch({ pickup: "", pickupMapLocation: null }); }
+  };
+  const patchStop = (i, p) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
+  const addStop = () => setDraftWaypoints((prev) => ({ ...prev, stopovers: [...prev.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] }));
+  const removeStop = (i) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.filter((_, j) => j !== i) }));
+
+  const rows = itinRowsFromWaypoints(draftWaypoints, fromAirport, toAirport);
+  const liveMetrics = estimateRouteMetrics(draftWaypoints);
+  const dirty = JSON.stringify(draftWaypoints) !== JSON.stringify(tour.waypoints);
+
+  const handleSave = () => {
+    const metrics = estimateRouteMetrics(draftWaypoints);
+    onUpdateTour({ ...tour, waypoints: draftWaypoints, routeDistanceKm: metrics?.distanceKm ?? tour.routeDistanceKm, routeDurationMins: metrics?.durationMins ?? tour.routeDurationMins });
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1800);
+  };
+
+  useEffect(() => {
+    if (!dirty) return;
+    const t = setTimeout(handleSave, 800);
+    return () => clearTimeout(t);
+  }, [draftWaypoints]);
+
+  return (
+    <div className="-m-8 min-h-screen py-6 sm:py-8" style={{ background: "linear-gradient(135deg, #FFF8F0 0%, #FDF0E4 45%, #EFF6FF 100%)", fontFamily: "'Wix Madefor Display', 'Inter', sans-serif" }}>
+      <div className="mx-[10%] flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgba(59,30,14,0.4)" }}>Itinerary Editor · Airport templates</p>
+        <select value={tour.id} onChange={(e) => setSelectedId(e.target.value)}
+          className="rounded-lg border border-white/60 bg-white/70 px-3 py-1.5 text-sm font-medium shadow-sm outline-none backdrop-blur" style={{ color: "#3b1e0e" }}>
+          {airportTours.map((t) => <option key={t.id} value={t.id}>{t.id} · {t.tripName}</option>)}
+        </select>
+      </div>
+
+      <div className="mx-[10%] mt-5 rounded-[32px] border border-white/50 p-5 shadow-xl sm:p-7" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Airport Transfer</h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <button type="button" onClick={handleSave} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#121621] px-4 text-sm font-semibold text-white transition hover:bg-gray-800">
+              <IconCheck size={14} />Save
+            </button>
+            <svg width="72" height="52" viewBox="0 0 72 52" className="hidden shrink-0 sm:block" aria-hidden="true">
+              <path d="M6 40 Q30 10 66 12" fill="none" stroke="#FDBA74" strokeWidth="2" strokeDasharray="4 5" strokeLinecap="round" />
+              <g transform="translate(50,8) rotate(35)">
+                <path d="M0 6 L16 0 L14 4 L20 4 L20 8 L14 8 L16 12Z" fill="#F4A639" />
+              </g>
+              <circle cx="10" cy="42" r="2" fill="#F33232" />
+              <circle cx="18" cy="46" r="1.4" fill="#F33232" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-3">
+            <MiniDatePicker icon={IconCalendarClock} label="Date" value={scheduledDate} onChange={setScheduledDate} />
+            <MiniTimePicker icon={IconClock} label="Pick-up Time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })} />
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm">
+          <AirportDirectionPicker fromValue={fromAirport} toValue={toAirport} onChangeFrom={handleFromAirportChange} onChangeTo={handleToAirportChange} onSwitchDir={handleSwitchAirportDir} />
+        </div>
+        {savedFlash && <p className="mt-2 text-xs font-semibold text-emerald-700">Saved — Catalog updated.</p>}
+
+        <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+          {/* Left column: itinerary list */}
+          <div className="rounded-2xl bg-white shadow-sm">
+            {rows.map((row, i) => {
+              const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
+              const isOpen = expanded === row.key;
+              const isStop = row.key.startsWith("stop-");
+              const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
+              return (
+                <div key={row.key} className={`${i !== rows.length - 1 ? "border-b border-gray-100" : ""} ${i === 0 ? "rounded-t-2xl" : ""} ${i === 0 && !isOpen ? "overflow-hidden" : ""}`}>
+                  <button type="button" onClick={() => setExpanded(isOpen ? null : row.key)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-gray-50/80 sm:gap-4 sm:px-5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"><row.icon size={16} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-bold text-gray-900">{row.name || "Not set"}</span>
+                      {row.meta && <span className="block truncate text-[13px] text-gray-500">{row.meta}</span>}
+                    </span>
+                    <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold sm:inline-flex" style={{ color }}>
+                      {row.label}
+                    </span>
+                    <IconChevronRight size={16} className={`shrink-0 text-gray-300 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-4 py-4 sm:px-5">
+                      {isStop && (
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
+                        <MapLocationPicker theme="light" size="field" label={row.label} value={row.mapLocation}
+                          onChange={(loc) => patchStop(stopIndex, { location: loc.title, mapLocation: loc })} />
+                      </div>
+                      )}
+                      {row.key === "pickup" && !fromAirport && toAirport && (
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
+                          <input type="text" value={draftWaypoints.pickup} onChange={(e) => patch({ pickup: e.target.value })}
+                            placeholder="Please input your location"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                        </div>
+                      )}
+                      {row.key === "dropoff" && !toAirport && fromAirport && (
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
+                          <input type="text" value={draftWaypoints.dropoff} onChange={(e) => patch({ dropoff: e.target.value })}
+                            placeholder="Please input your location"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                        </div>
+                      )}
+                      {row.key === "pickup" && (
+                        <div className="max-w-[220px]">
+                          <MiniTimePicker icon={IconClock} label="Departure time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })} />
+                        </div>
+                      )}
+                      {isStop && (
+                        <div className="flex items-end gap-3">
+                          <div className="max-w-[160px] flex-1">
+                            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Standby time</label>
+                            <input type="text" value={draftWaypoints.stopovers[stopIndex].waitTime} onChange={(e) => patchStop(stopIndex, { waitTime: e.target.value })} className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                          </div>
+                          <button type="button" onClick={() => { removeStop(stopIndex); setExpanded(null); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-100 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50">
+                            <IconTrash size={13} />Remove stop
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button type="button" onClick={addStop} className="flex w-full items-center gap-2 rounded-b-2xl border-t border-gray-100 px-4 py-3 text-sm font-semibold transition hover:bg-orange-50/60 sm:px-5" style={{ color: "#EA580C" }}>
+              <IconPlus size={15} />Add a stopover
+            </button>
+          </div>
+
+          {/* Right column: map */}
+        <div className="flex flex-col gap-3 lg:sticky lg:top-6">
+          <div className="relative">
+            <ItinItineraryMap rows={rows} zoom={zoom} />
+            <div className="absolute bottom-4 right-4 flex flex-col overflow-hidden rounded-xl bg-white shadow-lg">
+              <button type="button" onClick={() => setZoom((z) => Math.min(1.6, +(z + 0.2).toFixed(1)))} className="flex h-9 w-9 items-center justify-center text-gray-600 transition hover:bg-gray-50"><IconPlus size={15} /></button>
+              <div className="h-px bg-gray-100" />
+              <button type="button" onClick={() => setZoom((z) => Math.max(0.8, +(z - 0.2).toFixed(1)))} className="flex h-9 w-9 items-center justify-center text-gray-600 transition hover:bg-gray-50"><IconMinus size={15} /></button>
+            </div>
+          </div>
+          <p className="px-1 text-center text-xs" style={{ color: "rgba(59,30,14,0.4)" }}>Schematic preview · pins are placed for readability, not to scale</p>
+        </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- App shell ---------------- */
 function createEmptyTour() {
   return {
     id: "-----", reference: "-----", tripName: "", officeLocation: null, durationTier: null, status: "inactive", price: null, startTime: "09:00",
     viewedCount: 0, bookedCount: 0, serviceType: null, airport: null,
     userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null,
-    driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null,
+    driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: emptyWaypoints(), routeDistanceKm: null, routeDurationMins: null, tripDistanceKm: null, tripDurationMins: null,
     previewLinks: { tourDetails: "https://www.zengoride.com/tours/new-tour", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/new-tour/0001/2026-09-02" },
   };
@@ -2144,12 +3132,18 @@ function generateNextId(tours, serviceType, office) {
     const next = nums.length ? Math.max(...nums)+1 : 1;
     return `#A${String(next).padStart(4,"0")}${(office||"T")[0].toUpperCase()}`;
   }
+  if (serviceType === "Fixed Route") {
+    const nums = tours.map((t) => { const m = t.id.match(/^#F(\d{4})/); return m ? parseInt(m[1],10) : 0; }).filter((n) => n>0);
+    const next = nums.length ? Math.max(...nums)+1 : 1;
+    return `#F${String(next).padStart(4,"0")}${(office||"T")[0].toUpperCase()}`;
+  }
   const nums = tours.map((t) => { const m = t.id.match(/#T(\d{4})A/); return m ? parseInt(m[1],10) : 0; }).filter((n) => n>0);
   const next = nums.length ? Math.max(...nums)+1 : 1;
   return `#T${String(next).padStart(4,"0")}A`;
 }
 
 function AdminShell() {
+  const [systemView, setSystemView] = useState("admin");
   const [activeView, setActiveView] = useState("tour-catalog");
   const [tours, setTours] = useState(SEED_TOURS);
   const [modalTour, setModalTour] = useState(null);
@@ -2182,9 +3176,11 @@ function AdminShell() {
   return (
     <DebugCtx.Provider value={{ debugMode, toggle: () => setDebugMode((v) => !v) }}>
       <div className="min-h-screen" style={{ background: "var(--bg-app)" }}>
-        <Sidebar activeView={activeView} onNavigate={setActiveView} />
+        <Sidebar activeView={activeView} onNavigate={setActiveView} systemView={systemView} onSystemChange={setSystemView} />
         <main className="ml-56 min-h-screen p-8">
-          {activeView === "tour-catalog" ? (
+          {systemView === "itinerary-editor" ? (
+            <ItineraryEditorView tours={tours} onUpdateTour={(updated) => setTours((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))} />
+          ) : activeView === "tour-catalog" ? (
             <TourCatalogView tours={tours} onToggleStatus={handleToggleStatus} onEdit={openEdit} onAddTour={openAdd} onRefresh={handleRefresh} onDelete={handleDelete} onOpenBooking={openBooking} />
           ) : activeView === "pricing-cms" ? (
             <PricingCMSView />
@@ -2207,3 +3203,5 @@ function AdminShell() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(<AdminShell />);
 </script>
+
+</body></html>
