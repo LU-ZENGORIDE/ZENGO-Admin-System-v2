@@ -327,6 +327,9 @@ const VEHICLE_LINEUP_SEED = [
   { id: "v-7", vehicleType: "Crossover EV", vehicleName: "Tesla Model Y", offices: ["Tokyo", "Osaka"], ownerByOffice: { Tokyo: "Self", Osaka: "Self" } },
   { id: "v-8", vehicleType: "Luxury Sedan", vehicleName: "Mercedes Benz S-Class 4 Matic", offices: ["Tokyo", "Osaka"], ownerByOffice: { Tokyo: "Partner", Osaka: "Partner" } },
 ];
+const AIRPORT_LINEUP_SEED = Object.entries(OFFICE_AIRPORTS).flatMap(([office, airports], officeIdx) =>
+  airports.map((name, i) => ({ id: `air-${officeIdx}-${i}`, name, code: AIRPORT_CODES[name] || "", office }))
+);
 
 /* ---------------- small shared components ---------------- */
 function Toggle({ available, onToggle, small }) {
@@ -1598,16 +1601,6 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
 }
 
 /* ---------------- Pricing CMS ---------------- */
-function OfficeTags({ offices }) {
-  if (!offices || offices.length === 0) return <span style={{ color: "var(--text-3)" }}>—</span>;
-  return (
-    <div className="flex flex-wrap gap-1">
-      {offices.map((o) => (
-        <span key={o} className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</span>
-      ))}
-    </div>
-  );
-}
 function OfficeFilterChips({ officeFilter, onChange, counts }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -1623,10 +1616,6 @@ function OfficeFilterChips({ officeFilter, onChange, counts }) {
 }
 function OfficeModal({ draft: initial, onClose, onSave, onDelete }) {
   const [name, setName] = useState(initial.name);
-  const [airports, setAirports] = useState(initial.airports.length ? initial.airports : [""]);
-  const setAirportAt = (i, v) => setAirports((prev) => prev.map((a, j) => (j === i ? v : a)));
-  const addAirport = () => setAirports((prev) => [...prev, ""]);
-  const removeAirport = (i) => setAirports((prev) => prev.filter((_, j) => j !== i));
   const canSave = name.trim().length > 0;
   return (
     <ModalShell title={initial.isNew ? "Add Office" : "Edit Office"} onClose={onClose}
@@ -1637,30 +1626,49 @@ function OfficeModal({ draft: initial, onClose, onSave, onDelete }) {
           </button>
         )}
         <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
-        <button type="button" disabled={!canSave} onClick={() => onSave({ name: name.trim(), airports: airports.map((a) => a.trim()).filter(Boolean) })}
+        <button type="button" disabled={!canSave} onClick={() => onSave({ name: name.trim() })}
           className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308] disabled:cursor-not-allowed disabled:opacity-45">Save</button>
       </>)}>
       <Field label="Office Name">
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fukuoka" className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
       </Field>
-      <Field label="Airports">
-        <div className="flex flex-col gap-2">
-          {airports.map((a, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input type="text" value={a} onChange={(e) => setAirportAt(i, e.target.value)} placeholder="e.g. Fukuoka Airport"
-                className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-              <button type="button" onClick={() => removeAirport(i)} className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={14} /></button>
-            </div>
-          ))}
-          <button type="button" onClick={addAirport} className="inline-flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
-            <IconPlus size={12} />Add airport
+    </ModalShell>
+  );
+}
+function AirportModal({ airport: initial, onClose, onSave, onDelete }) {
+  const [name, setName] = useState(initial.name);
+  const [code, setCode] = useState(initial.code);
+  const [office, setOffice] = useState(initial.office);
+  const canSave = name.trim().length > 0 && code.trim().length > 0;
+  return (
+    <ModalShell title={initial.isNew ? "Add Airport" : "Edit Airport"} onClose={onClose}
+      footer={(<>
+        {onDelete && (
+          <button type="button" onClick={onDelete} className="mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
+            <IconTrash size={14} />Delete
           </button>
+        )}
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" disabled={!canSave} onClick={() => onSave({ name: name.trim(), code: code.trim().toUpperCase(), office })}
+          className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308] disabled:cursor-not-allowed disabled:opacity-45">Save</button>
+      </>)}>
+      <Field label="Airport Name">
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Narita Airport" className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+      </Field>
+      <Field label="Code">
+        <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. NRT" maxLength={4} className={`${fieldBox} mono uppercase max-w-[120px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+      </Field>
+      <Field label="Office">
+        <div className="flex flex-wrap gap-1.5">
+          {OFFICE_LOCATIONS.map((o) => (
+            <button key={o} type="button" onClick={() => setOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${office === o ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={office === o ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
+          ))}
         </div>
       </Field>
     </ModalShell>
   );
 }
-const PRICING_TABS = ["Tour Charters", "Airport Price", "Customized Price", "Offices", "Vehicle Lineup"];
+const PRICING_TABS = ["Tour Charters", "Airport Price", "Customized Price", "Offices", "Airport Management", "Vehicle Lineup"];
 
 function PricingCMSView() {
   const [activeTab, setActiveTab] = useState("Tour Charters");
@@ -1671,27 +1679,35 @@ function PricingCMSView() {
   const [editingAirportRow, setEditingAirportRow] = useState(null);
   const [editingSightseeingRow, setEditingSightseeingRow] = useState(null);
   const [editingCustomRow, setEditingCustomRow] = useState(null);
-  const [officeList, setOfficeList] = useState(() => OFFICE_LOCATIONS.map((loc) => ({ name: loc, airports: OFFICE_AIRPORTS[loc] ?? [] })));
+  const [officeList, setOfficeList] = useState(() => OFFICE_LOCATIONS.map((loc) => ({ name: loc })));
   const [editingOffice, setEditingOffice] = useState(null);
   const [vehicleLineup, setVehicleLineup] = useState(VEHICLE_LINEUP_SEED);
   const [editingVehicle, setEditingVehicle] = useState(null);
+  const [airportLineup, setAirportLineup] = useState(AIRPORT_LINEUP_SEED);
+  const [editingAirport, setEditingAirport] = useState(null);
 
   const sightseeingCounts = useMemo(() => officeCounts(rows), [rows]);
   const airportCounts = useMemo(() => officeCounts(airportRows), [airportRows]);
   const customCounts = useMemo(() => officeCounts(customRows), [customRows]);
   const vehicleLineupCounts = useMemo(() => officeCounts(vehicleLineup), [vehicleLineup]);
+  const airportLineupCounts = useMemo(() => {
+    const counts = { Tokyo: 0, Osaka: 0, Nagoya: 0, Sapporo: 0 };
+    airportLineup.forEach((a) => { if (a.office in counts) counts[a.office]++; });
+    return counts;
+  }, [airportLineup]);
 
   const officeStats = useMemo(() => officeList.map((o) => {
     const tally = (list) => { const forOffice = list.filter((r) => (r.offices || []).includes(o.name)); return { active: forOffice.filter((r) => r.available).length, total: forOffice.length }; };
-    return { office: o.name, airports: o.airports, tourCharters: tally(rows), airportTransfers: tally(airportRows), customizedPrice: tally(customRows) };
+    return { office: o.name, tourCharters: tally(rows), airportTransfers: tally(airportRows), customizedPrice: tally(customRows) };
   }), [officeList, rows, airportRows, customRows]);
 
   const filteredSightseeing = rows.filter((r) => (r.offices || []).includes(officeFilter));
   const filteredAirport = airportRows.filter((r) => (r.offices || []).includes(officeFilter));
   const filteredCustom = customRows.filter((r) => (r.offices || []).includes(officeFilter));
   const filteredVehicleLineup = vehicleLineup.filter((v) => (v.offices || []).includes(officeFilter));
+  const filteredAirportLineup = airportLineup.filter((a) => a.office === officeFilter);
 
-  const handleRefresh = () => { setRows(SIGHTSEEING_PRICE_SEED); setAirportRows(AIRPORT_PRICE_SEED); setCustomRows(CUSTOMIZED_PRICE_SEED); setVehicleLineup(VEHICLE_LINEUP_SEED); setOfficeFilter("Tokyo"); };
+  const handleRefresh = () => { setRows(SIGHTSEEING_PRICE_SEED); setAirportRows(AIRPORT_PRICE_SEED); setCustomRows(CUSTOMIZED_PRICE_SEED); setVehicleLineup(VEHICLE_LINEUP_SEED); setAirportLineup(AIRPORT_LINEUP_SEED); setOfficeFilter("Tokyo"); };
 
   const th = "px-4 py-3 text-xs font-semibold uppercase tracking-wide";
   return (
@@ -1719,13 +1735,12 @@ function PricingCMSView() {
           <div className="overflow-hidden rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Name","Office","Owner","Available","Half Day ¥","Full Day ¥","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Owner","Available","Half Day ¥","Full Day ¥","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
                 {filteredSightseeing.map((row) => (
                   <tr key={row.id} onClick={() => setEditingSightseeingRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3"><OfficeTags offices={row.offices} /></td>
                     <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(row.halfDayPrice)}</td>
@@ -1737,7 +1752,7 @@ function PricingCMSView() {
             </table>
           </div>
           {editingSightseeingRow && (
-            <SightseeingPriceModal row={editingSightseeingRow} onClose={() => setEditingSightseeingRow(null)}
+            <SightseeingPriceModal row={editingSightseeingRow} officeFilter={officeFilter} onClose={() => setEditingSightseeingRow(null)}
               onSave={(u) => { setRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingSightseeingRow(null); }} />
           )}
         </>
@@ -1747,17 +1762,18 @@ function PricingCMSView() {
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Name","Office","Pricing Table","Owner","Available","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Pricing Table","Owner","Available","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
-                {filteredAirport.map((row) => (
+                {filteredAirport.map((row) => {
+                  const officeLegs = row.legs.filter((leg) => (OFFICE_AIRPORTS[officeFilter] || []).includes(leg.airport));
+                  return (
                   <tr key={row.id} onClick={() => setEditingAirportRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 align-top font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3 align-top"><OfficeTags offices={row.offices} /></td>
                     <td className="px-4 py-3 align-top">
-                      {row.legs.length === 0 ? <span style={{ color: "var(--text-3)" }}>—</span> : (
+                      {officeLegs.length === 0 ? <span style={{ color: "var(--text-3)" }}>—</span> : (
                         <div className="flex flex-col gap-1.5">
-                          {row.legs.map((leg) => (
+                          {officeLegs.map((leg) => (
                             <div key={leg.airport} className="flex flex-wrap items-center gap-1.5 text-xs">
                               <span className="whitespace-nowrap rounded-md border px-2 py-0.5 font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{AIRPORT_CODES[leg.airport] || leg.airport}</span>
                               {(leg.ranges ?? []).map((r, ri) => (
@@ -1772,12 +1788,13 @@ function PricingCMSView() {
                     <td className="px-4 py-3 align-top" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setAirportRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 align-top"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingAirportRow(row); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
           {editingAirportRow && (
-            <AirportPriceModal row={editingAirportRow} onClose={() => setEditingAirportRow(null)}
+            <AirportPriceModal row={editingAirportRow} officeFilter={officeFilter} onClose={() => setEditingAirportRow(null)}
               onSave={(u) => { setAirportRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingAirportRow(null); }} />
           )}
         </>
@@ -1787,13 +1804,12 @@ function PricingCMSView() {
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full min-w-[1200px] text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Name","Office","Owner","Available","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Dispatch Km","Return Km","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Owner","Available","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Dispatch Km","Return Km","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
                 {filteredCustom.map((row) => (
                   <tr key={row.id} onClick={() => setEditingCustomRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3"><OfficeTags offices={row.offices} /></td>
                     <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setCustomRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.minDurationHrs)}</td>
@@ -1811,14 +1827,14 @@ function PricingCMSView() {
             </table>
           </div>
           {editingCustomRow && (
-            <CustomizedPriceModal row={editingCustomRow} onClose={() => setEditingCustomRow(null)}
+            <CustomizedPriceModal row={editingCustomRow} officeFilter={officeFilter} onClose={() => setEditingCustomRow(null)}
               onSave={(u) => { setCustomRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingCustomRow(null); }} />
           )}
         </>
       ) : activeTab === "Offices" ? (
         <>
           <div className="flex justify-end">
-            <button type="button" onClick={() => setEditingOffice({ isNew: true, name: "", airports: [] })}
+            <button type="button" onClick={() => setEditingOffice({ isNew: true, name: "" })}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#FACC15] px-4 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
               <IconPlus size={16} />Add Office
             </button>
@@ -1826,17 +1842,12 @@ function PricingCMSView() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {officeStats.map((s) => (
               <div key={s.office} className="relative rounded-xl border p-4 shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
-                <button type="button" onClick={() => setEditingOffice({ isNew: false, name: s.office, airports: s.airports })}
+                <button type="button" onClick={() => setEditingOffice({ isNew: false, name: s.office })}
                   title="Edit office" className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600">
                   <IconPencil size={16} />
                 </button>
                 <p className="pr-7 text-base font-bold" style={{ color: "var(--text-1)" }}>{s.office}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {s.airports.length === 0 ? <span className="text-xs" style={{ color: "var(--text-3)" }}>No airports</span> : s.airports.map((a) => (
-                    <span key={a} className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{AIRPORT_CODES[a] || a}</span>
-                  ))}
-                </div>
-                <div className="mt-4 flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: "var(--border-soft)" }}>
+                <div className="mt-3 flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: "var(--border-soft)" }}>
                   {[["Tour Charters", s.tourCharters], ["Airport Transfers", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span style={{ color: "var(--text-2)" }}>{label}</span>
@@ -1861,6 +1872,49 @@ function PricingCMSView() {
               }} />
           )}
         </>
+      ) : activeTab === "Airport Management" ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={airportLineupCounts} />
+            <button type="button" onClick={() => setEditingAirport({ isNew: true, id: null, name: "", code: "", office: officeFilter })}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#FACC15] px-4 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
+              <IconPlus size={16} />Add Airport
+            </button>
+          </div>
+          <div className="overflow-hidden rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+            <table className="w-full text-left text-sm">
+              <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+                {["Airport Name","Code","Office","Action"].map((c) => <th key={c} className={th} style={{ color: "var(--text-3)" }}>{c}</th>)}
+              </tr></thead>
+              <tbody>
+                {filteredAirportLineup.map((a) => (
+                  <tr key={a.id} onClick={() => setEditingAirport(a)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                    <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{a.name}</td>
+                    <td className="px-4 py-3 mono" style={{ color: "var(--text-2)" }}>{a.code || "—"}</td>
+                    <td className="px-4 py-3"><span className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{a.office}</span></td>
+                    <td className="px-4 py-3"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingAirport(a); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
+                  </tr>
+                ))}
+                {filteredAirportLineup.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-xs" style={{ color: "var(--text-3)" }}>No airports registered for {officeFilter}.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {editingAirport && (
+            <AirportModal airport={editingAirport} onClose={() => setEditingAirport(null)}
+              onSave={(updated) => {
+                setAirportLineup((prev) => editingAirport.isNew
+                  ? [...prev, { ...updated, id: `air-${Date.now()}` }]
+                  : prev.map((a) => a.id === editingAirport.id ? { id: a.id, ...updated } : a));
+                setEditingAirport(null);
+              }}
+              onDelete={editingAirport.isNew ? undefined : () => {
+                setAirportLineup((prev) => prev.filter((a) => a.id !== editingAirport.id));
+                setEditingAirport(null);
+              }} />
+          )}
+        </>
       ) : activeTab === "Vehicle Lineup" ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1880,7 +1934,7 @@ function PricingCMSView() {
                   <tr key={v.id} onClick={() => setEditingVehicle(v)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 align-top font-medium" style={{ color: "var(--text-1)" }}>{v.vehicleType}</td>
                     <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{v.vehicleName}</td>
-                    <td className="px-4 py-3 align-top"><OfficeTags offices={v.offices} /></td>
+                    <td className="px-4 py-3 align-top"><span className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{officeFilter}</span></td>
                     <td className="px-4 py-3 align-top">
                       <div className="flex flex-wrap gap-1">
                         {v.offices.map((o) => (
@@ -1921,10 +1975,9 @@ function PricingCMSView() {
   );
 }
 
-function SightseeingPriceModal({ row, onClose, onSave }) {
+function SightseeingPriceModal({ row, officeFilter, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
-  const toggleOffice = (o) => patch({ offices: draft.offices.includes(o) ? draft.offices.filter((x) => x !== o) : [...draft.offices, o] });
   return (
     <ModalShell title="Edit Vehicle Pricing" onClose={onClose}
       footer={(<>
@@ -1935,11 +1988,10 @@ function SightseeingPriceModal({ row, onClose, onSave }) {
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
       </div>
-      <Field label="Offices">
-        <div className="flex flex-wrap gap-1.5">
-          {OFFICE_LOCATIONS.map((o) => (
-            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
-          ))}
+      <Field label="Office">
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{officeFilter}</span>
+          <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set by the office filter above.</span>
         </div>
       </Field>
       <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
@@ -2039,17 +2091,24 @@ function RangeEditorModal({ airport, range, onSave, onDelete, onClose }) {
     </div>
   );
 }
-function AirportPriceModal({ row, onClose, onSave }) {
+function AirportPriceModal({ row, officeFilter, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const [editingRange, setEditingRange] = useState(null);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
-  const availableAirports = [...new Set((draft.offices || []).flatMap((o) => OFFICE_AIRPORTS[o] || []))];
-  const toggleOffice = (o) => patch({ offices: draft.offices.includes(o) ? draft.offices.filter((x) => x !== o) : [...draft.offices, o] });
-  const toggleAirport = (airport) => setDraft((prev) => {
-    const exists = prev.legs.some((l) => l.airport === airport);
-    if (exists) return { ...prev, legs: prev.legs.filter((l) => l.airport !== airport) };
-    return { ...prev, legs: [...prev.legs, { airport, ranges: [{ name: "Standard", radiusKm: 15, fixedFee: 0, center: null }] }] };
-  });
+  const availableAirports = OFFICE_AIRPORTS[officeFilter] || [];
+  /* Which airports an office serves is owned by OFFICE_AIRPORTS, not chosen
+   * per-vehicle here — so every airport the current office serves
+   * automatically gets a pricing leg (defaulting to zero) the first time
+   * this vehicle's pricing is opened for that office. */
+  useEffect(() => {
+    setDraft((prev) => {
+      const existing = new Set(prev.legs.map((l) => l.airport));
+      const missing = availableAirports.filter((a) => !existing.has(a));
+      if (missing.length === 0) return prev;
+      return { ...prev, legs: [...prev.legs, ...missing.map((airport) => ({ airport, ranges: [{ name: "Standard", radiusKm: 15, fixedFee: 0, center: null }] }))] };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const patchLeg = (airport, fn) => setDraft((prev) => ({ ...prev, legs: prev.legs.map((l) => l.airport === airport ? fn(l) : l) }));
   const addRange = (airport) => patchLeg(airport, (l) => {
     const lastRadius = l.ranges[l.ranges.length - 1]?.radiusKm ?? 0;
@@ -2069,27 +2128,12 @@ function AirportPriceModal({ row, onClose, onSave }) {
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
       </div>
-      <Field label="Offices">
-        <div className="flex flex-wrap gap-1.5">
-          {OFFICE_LOCATIONS.map((o) => (
-            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
-          ))}
-        </div>
-      </Field>
-      <Field label="Airports">
-        <div className="flex flex-wrap gap-1.5">
-          {availableAirports.length === 0 ? <span className="text-xs" style={{ color: "var(--text-3)" }}>Select an office to see its airports.</span> : availableAirports.map((a) => {
-            const active = draft.legs.some((l) => l.airport === a);
-            return <button key={a} type="button" onClick={() => toggleAirport(a)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={active ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{a}</button>;
-          })}
-        </div>
-      </Field>
       <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
-      {draft.legs.length > 0 && (
+      {draft.legs.filter((l) => availableAirports.includes(l.airport)).length > 0 && (
         <Field label="Pricing Map">
           <div className="flex flex-col gap-3">
-            {draft.legs.map((leg) => (
+            {draft.legs.filter((l) => availableAirports.includes(l.airport)).map((leg) => (
               <div key={leg.airport} className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{leg.airport} <span className="text-xs font-normal" style={{ color: "var(--text-3)" }}>({AIRPORT_CODES[leg.airport]})</span></p>
@@ -2136,10 +2180,9 @@ function AirportPriceModal({ row, onClose, onSave }) {
   );
 }
 
-function CustomizedPriceModal({ row, onClose, onSave }) {
+function CustomizedPriceModal({ row, officeFilter, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
-  const toggleOffice = (o) => patch({ offices: draft.offices.includes(o) ? draft.offices.filter((x) => x !== o) : [...draft.offices, o] });
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
   const num = fieldBox + " tabular-nums";
   return (
@@ -2152,11 +2195,10 @@ function CustomizedPriceModal({ row, onClose, onSave }) {
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
       </div>
-      <Field label="Offices">
-        <div className="flex flex-wrap gap-1.5">
-          {OFFICE_LOCATIONS.map((o) => (
-            <button key={o} type="button" onClick={() => toggleOffice(o)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${draft.offices.includes(o) ? "bg-[#121621] text-white" : "hover:bg-black/10"}`} style={draft.offices.includes(o) ? {} : { background: "var(--bg-subtle)", color: "var(--text-2)" }}>{o}</button>
-          ))}
+      <Field label="Office">
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{officeFilter}</span>
+          <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set by the office filter above.</span>
         </div>
       </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Owner</p><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></div>
