@@ -407,7 +407,7 @@ const MAP_PICKER_TRIGGER_STYLES = {
   dark: { empty: "border-white/10 bg-white/5 text-white/25 hover:border-white/20 hover:bg-white/10 hover:text-white/45", filled: "border-emerald-400 bg-emerald-500/90 text-white hover:bg-emerald-500" },
   light: { empty: "border-gray-200 bg-gray-50 text-gray-300 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-500", filled: "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600" },
 };
-function MapLocationPicker({ value, onChange, label, theme = "dark", size = "default", radiusEditable = false }) {
+function MapLocationPicker({ value, onChange, label, theme = "dark", size = "default", radiusEditable = false, placeholder }) {
   const [open, setOpen] = useState(false);
   const styles = MAP_PICKER_TRIGGER_STYLES[theme];
   const compact = size === "compact";
@@ -418,7 +418,7 @@ function MapLocationPicker({ value, onChange, label, theme = "dark", size = "def
         <button type="button" onClick={() => setOpen(true)}
           className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm outline-none transition hover:border-gray-400 focus:border-gray-400">
           <IconMapPin size={15} className={value ? "shrink-0 text-emerald-500" : "shrink-0 text-gray-300"} />
-          <span className={`min-w-0 flex-1 truncate ${value ? "text-gray-900" : "text-gray-400"}`}>{value ? value.title : `Search for ${label.toLowerCase()}…`}</span>
+          <span className={`min-w-0 flex-1 truncate ${value ? "text-gray-900" : "text-gray-400"}`}>{value ? value.title : (placeholder ?? `Search for ${label.toLowerCase()}…`)}</span>
           <IconChevronRight size={14} className="shrink-0 text-gray-300" />
         </button>
       ) : (
@@ -446,6 +446,22 @@ function MapLocationModal({ label, initial, theme, radiusEditable = false, onClo
   const isLight = theme === "light";
   const displayLocation = selected ?? { title: query || "Search for a location", address: "Select an address from the suggestions below" };
   const circleSize = Math.max(50, Math.min(160, radiusKm * 2.6));
+  /* Pin position as % of the map box; click or drag anywhere on the map to place it by hand. */
+  const [pin, setPin] = useState(initial?.pin ?? { x: 50, y: 50 });
+  const [pinMoved, setPinMoved] = useState(false);
+  const draggingRef = useRef(false);
+  const movePinTo = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const clamp = (v) => Math.min(97, Math.max(3, v));
+    setPin({ x: clamp(((e.clientX - r.left) / r.width) * 100), y: clamp(((e.clientY - r.top) / r.height) * 100) });
+    setPinMoved(true);
+  };
+  const canSave = !!selected || pinMoved;
+  const handleSave = () => {
+    if (!canSave) return;
+    const base = selected ?? { title: query.trim() || "Dropped pin", address: `Custom pin · ${pin.x.toFixed(0)}%, ${pin.y.toFixed(0)}% on map` };
+    onSave({ ...base, pin, ...(radiusEditable ? { radiusKm } : {}) });
+  };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
       <div role="dialog" aria-modal="true" className={`w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl ${isLight ? "border-gray-200 bg-white" : "border-white/20 bg-slate-900/95 backdrop-blur-xl"}`} onClick={(e) => e.stopPropagation()}>
@@ -467,7 +483,7 @@ function MapLocationModal({ label, initial, theme, radiusEditable = false, onClo
               <ul className={`absolute left-0 right-0 top-full z-10 mt-2 max-h-60 overflow-y-auto rounded-xl border shadow-xl ${isLight ? "border-gray-200 bg-white" : "border-white/15 bg-slate-900"}`}>
                 {suggestions.map((loc) => (
                   <li key={`${loc.title}-${loc.address}`}>
-                    <button type="button" onClick={() => { setQuery(loc.title); setSelected(loc); setShowSuggestions(false); }}
+                    <button type="button" onClick={() => { setQuery(loc.title); setSelected(loc); setShowSuggestions(false); setPin({ x: 50, y: 50 }); setPinMoved(false); }}
                       className={`flex w-full gap-3 px-4 py-3 text-left transition ${isLight ? "hover:bg-gray-50" : "hover:bg-white/5"}`}>
                       <IconMapPin size={16} className={`mt-0.5 shrink-0 ${isLight ? "text-gray-400" : "text-white/40"}`} />
                       <div className="min-w-0">
@@ -480,27 +496,33 @@ function MapLocationModal({ label, initial, theme, radiusEditable = false, onClo
               </ul>
             )}
           </div>
-          <div className={`relative mt-4 overflow-hidden rounded-xl border ${isLight ? "border-gray-200" : "border-white/10"}`}>
-            <div className="h-52" style={{ background: "repeating-linear-gradient(45deg, #dce3ea 0 2px, #eef1f5 2px 36px)" }} />
-            <div className={`absolute inset-0 ${isLight ? "bg-white/20" : "bg-slate-900/30"}`} />
-            {radiusEditable && selected && (
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-[#FACC15]/80 bg-[#FACC15]/10 transition-all" style={{ width: circleSize, height: circleSize }} />
+          <div className={`relative mt-4 cursor-crosshair touch-none select-none overflow-hidden rounded-xl border ${isLight ? "border-gray-200" : "border-white/10"}`}
+            onPointerDown={(e) => { draggingRef.current = true; e.currentTarget.setPointerCapture(e.pointerId); movePinTo(e); }}
+            onPointerMove={(e) => { if (draggingRef.current) movePinTo(e); }}
+            onPointerUp={() => { draggingRef.current = false; }}
+            onPointerCancel={() => { draggingRef.current = false; }}>
+            <div className="h-52" style={{ backgroundColor: "#eef2f6", backgroundImage: "linear-gradient(rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.2) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+            <div className="pointer-events-none absolute rounded-2xl" style={{ left: "6%", top: "12%", width: "22%", height: "22%", background: "rgba(134,239,172,0.4)" }} />
+            <div className="pointer-events-none absolute inset-y-0 right-0" style={{ width: "30%", background: "linear-gradient(200deg, rgba(147,197,253,0.6), rgba(147,197,253,0.15) 70%)", clipPath: "polygon(35% 0, 100% 0, 100% 100%, 0 100%)" }} />
+            <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 80 Q35 55 55 45 T100 10" stroke="#FACC15" strokeWidth="1.4" fill="none" /><path d="M0 25 Q30 40 60 65 T100 92" stroke="#cbd5e1" strokeWidth="1" fill="none" /><path d="M20 0 L28 100" stroke="#e2e8f0" strokeWidth="1" fill="none" /></svg>
+            <div className={`pointer-events-none absolute inset-0 ${isLight ? "bg-white/10" : "bg-slate-900/30"}`} />
+            {radiusEditable && (selected || pinMoved) && (
+              <div className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-[#FACC15]/80 bg-[#FACC15]/10" style={{ left: `${pin.x}%`, top: `${pin.y}%`, width: circleSize, height: circleSize }} />
             )}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                <IconMapPin size={40} className="text-red-500 drop-shadow-lg" style={{ fill: "currentColor" }} />
-                <span className={`absolute -bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-[10px] backdrop-blur-sm ${isLight ? "bg-gray-900/90 text-white/80" : "bg-slate-900/90 text-white/80"}`}>
-                  <IconMapPin size={12} className="text-[#FACC15]" />
-                  Click to enable pin drag
-                </span>
-              </div>
+            <div className="pointer-events-none absolute -translate-x-1/2 -translate-y-full" style={{ left: `${pin.x}%`, top: `${pin.y}%` }}>
+              <IconMapPin size={40} className="text-red-500 drop-shadow-lg" style={{ fill: "currentColor" }} />
             </div>
+            <span className={`pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-[10px] backdrop-blur-sm ${isLight ? "bg-gray-900/90 text-white/80" : "bg-slate-900/90 text-white/80"}`}>
+              <IconMapPin size={12} className="text-[#FACC15]" />
+              Click or drag on the map to set the pin
+            </span>
           </div>
           <div className={`mt-3 rounded-lg px-3 py-2 ${isLight ? "bg-gray-50" : "bg-white/5"}`}>
             <p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{displayLocation.title}</p>
             <p className={`mt-0.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>{displayLocation.address}</p>
+            {pinMoved && <p className={`mt-1 text-[11px] font-medium ${isLight ? "text-emerald-600" : "text-emerald-300"}`}>Pin adjusted manually</p>}
           </div>
-          {radiusEditable && selected && (
+          {radiusEditable && (selected || pinMoved) && (
             <div className={`mt-3 rounded-lg px-3 py-2 ${isLight ? "bg-gray-50" : "bg-white/5"}`}>
               <label className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide ${isLight ? "text-gray-400" : "text-white/40"}`}>Effective Radius</label>
               <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 ${isLight ? "border-gray-200 bg-white" : "border-white/15 bg-white/5"}`}>
@@ -514,7 +536,7 @@ function MapLocationModal({ label, initial, theme, radiusEditable = false, onClo
         </div>
         <div className={`grid grid-cols-2 gap-3 border-t p-4 ${isLight ? "border-gray-100" : "border-white/10"}`}>
           <button type="button" onClick={onClose} className={`rounded-xl border py-3 text-sm font-medium transition ${isLight ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50" : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"}`}>Cancel</button>
-          <button type="button" disabled={!selected} onClick={() => selected && onSave(radiusEditable ? { ...selected, radiusKm } : selected)}
+          <button type="button" disabled={!canSave} onClick={handleSave}
             className={`rounded-xl border py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${isLight ? "border-gray-800 bg-gray-900 text-white hover:bg-gray-800" : "border-white/15 bg-slate-800/80 text-white hover:bg-slate-700/80"}`}>Save</button>
         </div>
       </div>
@@ -3205,8 +3227,13 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
+                      ) : !isStop && !row.name ? (
+                        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <MapLocationPicker theme="light" size="field" label={row.label} placeholder="Please input a location." value={row.mapLocation ?? null}
+                            onChange={(loc) => patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc } : { dropoff: loc.title, dropoffMapLocation: loc })} />
+                        </div>
                       ) : (
-                        <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name || "Not set"}</span>
+                        <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name}</span>
                       )}
                       {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${alignIndent}`}>{row.meta}</span>}
                     </div>
