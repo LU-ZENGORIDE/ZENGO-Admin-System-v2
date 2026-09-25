@@ -3134,6 +3134,8 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   /* Charter pick-up/drop-off start as the template's suggested spots; they count as the order's real
    * address only once the user picks one in the location modal. */
   const [confirmedEnds, setConfirmedEnds] = useState({ pickup: false, dropoff: false });
+  /* Charter only: when on, the End Spot mirrors the Start Spot (round trip). */
+  const [sameAsStart, setSameAsStart] = useState(false);
   /* Frequently Used Routes scrolls sideways with no scrollbar: vertical mouse wheel is mapped to horizontal
    * scroll, and the row can be dragged with the mouse (a drag doesn't count as a click on a route). */
   const routesRowRef = useRef(null);
@@ -3161,6 +3163,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
     setFromAirport(d.from);
     setToAirport(d.to);
     setConfirmedEnds({ pickup: false, dropoff: false });
+    setSameAsStart(mode === "charter" && !!tour.waypoints.pickup && tour.waypoints.pickup === tour.waypoints.dropoff);
     setExpanded(null);
   }, [tour?.id, tour?.waypoints, tour?.airport]);
 
@@ -3294,10 +3297,12 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                   </span>
                 </>)}
               </div>
-              <button type="button" onClick={handleReverse} title="Swap start and end spots (stopovers are reversed too)"
-                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-semibold transition hover:bg-orange-100" style={{ color: "#EA580C" }}>
-                <IconArrowUpDown size={13} />Reverse start &amp; end
-              </button>
+              {mode === "airport" && (
+                <button type="button" onClick={handleReverse} title="Swap start and end spots (stopovers are reversed too)"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-semibold transition hover:bg-orange-100" style={{ color: "#EA580C" }}>
+                  <IconArrowUpDown size={13} />Reverse start &amp; end
+                </button>
+              )}
             </div>
             {rows.map((row, i) => {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
@@ -3311,8 +3316,9 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               const alignIndent = !isStop && direction ? "pl-3" : "";
               /* A fixed-route template only names the area (e.g. "Tokyo (23 Wards)") for the non-airport end;
                * until a real address is pinned, show it muted with a prompt to enter one. */
+              const mirrorsStart = mode === "charter" && row.key === "dropoff" && sameAsStart;
               const needsExactAddress = mode === "charter"
-                ? !isStop && !!row.name && !confirmedEnds[row.key]
+                ? !isStop && !mirrorsStart && !!row.name && !confirmedEnds[row.key]
                 : !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
@@ -3333,15 +3339,38 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
+                      ) : mirrorsStart ? (
+                        <div className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
+                          <IconMapPin size={15} className="shrink-0 text-gray-300" />
+                          <span className="min-w-0 flex-1 truncate">{draftWaypoints.pickup || "Same as Start Spot"}</span>
+                        </div>
                       ) : !isStop ? (
                         <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                           <MapLocationPicker theme="light" size="field" label={row.label} placeholder="Please input a location."
                             muted={needsExactAddress}
                             value={row.mapLocation ?? (row.name ? { title: row.name, address: "" } : null)}
-                            onChange={(loc) => { patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc } : { dropoff: loc.title, dropoffMapLocation: loc }); setConfirmedEnds((c) => ({ ...c, [row.key]: true })); }} />
+                            onChange={(loc) => {
+                              const mirror = mode === "charter" && sameAsStart && row.key === "pickup";
+                              patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc, ...(mirror ? { dropoff: loc.title, dropoffMapLocation: loc } : {}) } : { dropoff: loc.title, dropoffMapLocation: loc });
+                              setConfirmedEnds((c) => ({ ...c, [row.key]: true, ...(mirror ? { dropoff: true } : {}) }));
+                            }} />
                         </div>
                       ) : (
                         <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name || "Not set"}</span>
+                      )}
+                      {mode === "charter" && row.key === "dropoff" && (
+                        <label className="inline-flex w-fit cursor-pointer select-none items-center gap-2 pl-1 text-[13px] font-medium text-gray-600">
+                          <input type="checkbox" checked={sameAsStart} className="h-4 w-4 cursor-pointer accent-orange-500"
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setSameAsStart(on);
+                              if (on) {
+                                patch({ dropoff: draftWaypoints.pickup, dropoffMapLocation: draftWaypoints.pickupMapLocation ?? null });
+                                setConfirmedEnds((c) => ({ ...c, dropoff: c.pickup }));
+                              }
+                            }} />
+                          Same as Start Spot
+                        </label>
                       )}
                       {needsExactAddress && (
                         <span className="block pl-1 text-[12px] font-medium text-red-500">
