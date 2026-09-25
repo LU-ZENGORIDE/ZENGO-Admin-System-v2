@@ -3196,6 +3196,34 @@ function ItineraryEditorView({ tours, onBack }) {
 }
 /* Shared route editor for the Itinerary Editor tabs: "airport" adds the From/To Airport direction and
  * airport dropdown; "charter" edits a Sightseeing Charter route as-is. */
+/* Placeholder 16:9 thumbnail: a stable per-product gradient scene until real product photos exist. */
+const THUMB_PALETTES = [["#fb923c", "#f43f5e"], ["#34d399", "#0ea5e9"], ["#a78bfa", "#f472b6"], ["#fbbf24", "#f97316"], ["#60a5fa", "#6366f1"], ["#2dd4bf", "#84cc16"]];
+function CharterProductCard({ tour, active, onSelect }) {
+  const h = [...tour.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7);
+  const [c1, c2] = THUMB_PALETTES[h % THUMB_PALETTES.length];
+  return (
+    <button type="button" role="tab" aria-selected={active} onClick={onSelect} title={`${tour.id} · ${tour.tripName}`}
+      className={`w-[244px] shrink-0 overflow-hidden rounded-2xl bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${active ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent" : "ring-1 ring-black/5"}`}>
+      <div className="relative aspect-video w-full overflow-hidden" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
+        <svg viewBox="0 0 160 90" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
+          <circle cx={120 - (h % 40)} cy="24" r="10" fill="rgba(255,255,255,0.55)" />
+          <path d={`M0 90 L0 ${58 + (h % 10)} L${30 + (h % 20)} 38 L${62 + (h % 15)} ${60 - (h % 8)} L${95 + (h % 12)} 30 L160 ${62 - (h % 9)} L160 90 Z`} fill="rgba(255,255,255,0.28)" />
+          <path d={`M0 90 L0 72 L${45 + (h % 18)} 56 L${100 - (h % 14)} 74 L160 60 L160 90 Z`} fill="rgba(255,255,255,0.45)" />
+        </svg>
+        {active && <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-orange-600 shadow"><IconCheck size={12} /></span>}
+      </div>
+      <div className="flex flex-col gap-1.5 p-3">
+        <p className="truncate text-[14px] font-bold text-gray-900">{tour.tripName || "Untitled tour"}</p>
+        <div className="flex items-center gap-x-2 overflow-hidden whitespace-nowrap text-[11px] text-gray-500">
+          <span className="inline-flex items-center gap-1"><IconClock size={11} />{formatDuration(tour.routeDurationMins)}</span>
+          <span className="inline-flex items-center gap-1"><IconMap size={11} />{tour.routeDistanceKm != null ? `${tour.routeDistanceKm} km` : "—"}</span>
+          <span className="inline-flex min-w-0 items-center gap-1"><IconMapPin size={11} className="shrink-0" /><span className="truncate">{regionOfTour(tour) ?? "—"}</span></span>
+        </div>
+        <p className="text-[15px] font-extrabold tabular-nums" style={{ color: "#EA580C" }}>{formatPrice(tour.price)}</p>
+      </div>
+    </button>
+  );
+}
 function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   const modeTitle = ITIN_MODE_TITLES[mode];
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? null);
@@ -3326,7 +3354,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
             </div>
           )}
         </div>
-        <div role="tablist" ref={routesRowRef} className="no-scrollbar flex cursor-grab select-none gap-2 overflow-x-auto active:cursor-grabbing"
+        <div role="tablist" ref={routesRowRef} className={`no-scrollbar flex cursor-grab select-none overflow-x-auto active:cursor-grabbing ${mode === "charter" ? "gap-3 px-1 py-2" : "gap-2"}`}
           onPointerDown={(e) => { if (e.pointerType !== "mouse") return; routesDragRef.current = { active: true, startX: e.clientX, startScroll: e.currentTarget.scrollLeft, moved: false }; }}
           onPointerMove={(e) => { const d = routesDragRef.current; if (!d.active) return; const dx = e.clientX - d.startX; if (Math.abs(dx) > 4) d.moved = true; e.currentTarget.scrollLeft = d.startScroll - dx; }}
           onPointerUp={() => { routesDragRef.current.active = false; }}
@@ -3335,6 +3363,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
           {visibleTemplates.length === 0 && <p className="py-2 text-[13px]" style={{ color: "rgba(59,30,14,0.5)" }}>No tours in {region} yet.</p>}
           {visibleTemplates.map((t) => {
             const active = t.id === tour.id;
+            if (mode === "charter") return <CharterProductCard key={t.id} tour={t} active={active} onSelect={() => setSelectedId(t.id)} />;
             return (
               <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => setSelectedId(t.id)} title={`${t.id} · ${t.tripName}`}
                 className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${active ? "text-white shadow" : "bg-white/80 hover:bg-white"}`}
