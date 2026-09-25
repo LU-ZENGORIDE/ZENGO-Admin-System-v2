@@ -3184,12 +3184,14 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
             </div>
             {rows.map((row, i) => {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
-              const isOpen = expanded === row.key;
+              /* An airport end spot has nothing to edit here (the airport is chosen above), so it doesn't expand. */
+              const expandable = !(row.key === "dropoff" && toAirport);
+              const isOpen = expandable && expanded === row.key;
               const isStop = row.key.startsWith("stop-");
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
                 <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
-                  <button type="button" onClick={() => setExpanded(isOpen ? null : row.key)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-gray-50/80 sm:gap-4 sm:px-5">
+                  <button type="button" disabled={!expandable} onClick={() => setExpanded(isOpen ? null : row.key)} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition sm:gap-4 sm:px-5 ${expandable ? "hover:bg-gray-50/80" : "cursor-default"}`}>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"><row.icon size={16} /></span>
                     <span className="min-w-0 flex-1">
@@ -3199,7 +3201,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                     <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold sm:inline-flex" style={{ color }}>
                       {row.label}
                     </span>
-                    <IconChevronRight size={16} className={`shrink-0 text-gray-300 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                    {expandable ? <IconChevronRight size={16} className={`shrink-0 text-gray-300 transition-transform ${isOpen ? "rotate-90" : ""}`} /> : <span className="w-4 shrink-0" aria-hidden="true" />}
                   </button>
                   {isOpen && (
                     <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-4 py-4 sm:px-5">
