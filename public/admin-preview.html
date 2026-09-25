@@ -3024,11 +3024,12 @@ function AirportSelect({ value, onChange }) {
     </div>
   );
 }
-function itinRowsFromWaypoints(wp, direction, dropoffTime) {
+function itinRowsFromWaypoints(wp, direction, dropoffTime, mode = "airport") {
+  const showNames = mode === "charter" || !!direction;
   return [
-    { key: "pickup", label: "Start Spot", name: direction ? wp.pickup : "", meta: `Pick-up Time ${wp.pickupTime || "—"}`, mapLocation: wp.pickupMapLocation, icon: IconPlane },
+    { key: "pickup", label: "Start Spot", name: showNames ? wp.pickup : "", meta: `Pick-up Time ${wp.pickupTime || "—"}`, mapLocation: wp.pickupMapLocation, icon: mode === "charter" ? IconMapPin : IconPlane },
     ...wp.stopovers.map((s, i) => ({ key: `stop-${i}`, label: `Stop ${i + 1}`, name: s.location, meta: s.waitTime ? `Standby ${s.waitTime}` : "", mapLocation: s.mapLocation, icon: IconMapPin })),
-    { key: "dropoff", label: "End Spot", name: direction ? wp.dropoff : "", meta: `Drop-off Time ${dropoffTime ?? "—"}`, mapLocation: wp.dropoffMapLocation, icon: IconFlag },
+    { key: "dropoff", label: "End Spot", name: showNames ? wp.dropoff : "", meta: `Drop-off Time ${dropoffTime ?? "—"}`, mapLocation: wp.dropoffMapLocation, icon: IconFlag },
   ];
 }
 function ItinItineraryMap({ rows, zoom }) {
@@ -3068,10 +3069,46 @@ function deriveAirportDirection(tour) {
   if (isAirport(wp.dropoff, wp.dropoffMapLocation)) return { direction: "to", from: null, to: airport };
   return { direction: "from", from: null, to: null };
 }
+const ITIN_MODE_TITLES = { airport: "Airport Transfer", charter: "Tour Charter" };
 function ItineraryEditorView({ tours, onBack }) {
+  const [itinTab, setItinTab] = useState("Airport Transfer");
   const airportTours = useMemo(() => tours.filter((t) => t.serviceType === "Airport"), [tours]);
-  const [selectedId, setSelectedId] = useState(airportTours[0]?.id ?? null);
-  const tour = airportTours.find((t) => t.id === selectedId) ?? airportTours[0] ?? null;
+  const charterTours = useMemo(() => tours.filter((t) => t.serviceType === "Sightseeing Charter"), [tours]);
+  const tabBar = (
+    <div className="mx-[10%] mt-5 flex justify-center overflow-x-auto">
+      <div role="tablist" className="inline-flex gap-1.5 rounded-full border border-white/60 bg-white/60 p-1.5 shadow-sm backdrop-blur">
+        {ITIN_EDITOR_TABS.map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={itinTab === t} onClick={() => setItinTab(t)}
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${itinTab === t ? "text-white shadow" : "hover:bg-white/70"}`}
+            style={itinTab === t ? { background: ZG_GRADIENT } : { color: "rgba(59,30,14,0.55)" }}>
+            {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div className="-m-8 flex min-h-screen flex-col justify-center py-10 sm:py-12" style={{ background: "linear-gradient(135deg, #FFF8F0 0%, #FDF0E4 45%, #EFF6FF 100%)", fontFamily: "'Wix Madefor Display', 'Inter', sans-serif" }}>
+      {itinTab === "Airport Transfer" ? (
+        <ItineraryTemplateEditor key="airport" mode="airport" templates={airportTours} tabBar={tabBar} onBack={onBack} />
+      ) : itinTab === "Tour Charter" ? (
+        <ItineraryTemplateEditor key="charter" mode="charter" templates={charterTours} tabBar={tabBar} onBack={onBack} />
+      ) : (<>
+        {tabBar}
+        <div className="mx-[10%] mt-3 flex min-h-[50vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+          <h1 className="text-[30px] font-extrabold tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{itinTab}</h1>
+          <p className="mt-2 text-sm" style={{ color: "rgba(59,30,14,0.5)" }}>The {itinTab} itinerary editor is coming soon.</p>
+        </div>
+      </>)}
+    </div>
+  );
+}
+/* Shared route editor for the Itinerary Editor tabs: "airport" adds the From/To Airport direction and
+ * airport dropdown; "charter" edits a Sightseeing Charter route as-is. */
+function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
+  const modeTitle = ITIN_MODE_TITLES[mode];
+  const [selectedId, setSelectedId] = useState(templates[0]?.id ?? null);
+  const tour = templates.find((t) => t.id === selectedId) ?? templates[0] ?? null;
   const [draftWaypoints, setDraftWaypoints] = useState(() => (tour ? structuredClone(tour.waypoints) : null));
   const [expanded, setExpanded] = useState(null);
   const [zoom, setZoom] = useState(1);
@@ -3080,7 +3117,6 @@ function ItineraryEditorView({ tours, onBack }) {
   const [fromAirport, setFromAirport] = useState(null);
   const [toAirport, setToAirport] = useState(null);
   const [direction, setDirection] = useState(null);
-  const [itinTab, setItinTab] = useState("Airport Transfer");
   /* Frequently Used Routes scrolls sideways with no scrollbar: vertical mouse wheel is mapped to horizontal
    * scroll, and the row can be dragged with the mouse (a drag doesn't count as a click on a route). */
   const routesRowRef = useRef(null);
@@ -3095,7 +3131,7 @@ function ItineraryEditorView({ tours, onBack }) {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [itinTab, tour?.id]);
+  }, [tour?.id]);
 
   /* Start from the selected template's Catalog route, deriving the From/To Airport direction from which
    * end holds the template's airport. Edits here are for the current order only and never written back
@@ -3103,20 +3139,31 @@ function ItineraryEditorView({ tours, onBack }) {
   useEffect(() => {
     if (!tour) { setDraftWaypoints(null); return; }
     setDraftWaypoints(structuredClone(tour.waypoints));
-    const d = deriveAirportDirection(tour);
+    const d = mode === "airport" ? deriveAirportDirection(tour) : { direction: null, from: null, to: null };
     setDirection(d.direction);
     setFromAirport(d.from);
     setToAirport(d.to);
     setExpanded(null);
   }, [tour?.id, tour?.waypoints, tour?.airport]);
 
+  const backRow = (
+    <div className="mx-[10%] flex flex-wrap items-center justify-between gap-3">
+      <button type="button" onClick={onBack}
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/60 bg-white/70 pl-2.5 pr-4 text-sm font-semibold shadow-sm backdrop-blur transition hover:bg-white" style={{ color: "#3b1e0e" }}>
+        <IconChevronLeft size={16} />Back To My Trips
+      </button>
+    </div>
+  );
+
   if (!tour || !draftWaypoints) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed p-10 text-center" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
-        <p className="text-lg font-medium" style={{ color: "var(--text-2)" }}>No Airport templates yet</p>
-        <p className="mt-1 text-sm">Add an Airport-type template in the Catalog to edit its itinerary here.</p>
+    return (<>
+      {backRow}
+      {tabBar}
+      <div className="mx-[10%] mt-4 flex min-h-[40vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+        <p className="text-lg font-semibold" style={{ color: "#3b1e0e" }}>No {modeTitle} templates yet</p>
+        <p className="mt-1 text-sm" style={{ color: "rgba(59,30,14,0.5)" }}>Add a {mode === "airport" ? "Airport" : "Sightseeing Charter"} template in the Catalog to edit its itinerary here.</p>
       </div>
-    );
+    </>);
   }
 
   const patch = (p) => setDraftWaypoints((prev) => ({ ...prev, ...p }));
@@ -3144,43 +3191,16 @@ function ItineraryEditorView({ tours, onBack }) {
   const removeStop = (i) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.filter((_, j) => j !== i) }));
 
   const liveMetrics = estimateRouteMetrics(draftWaypoints);
-  const rows = itinRowsFromWaypoints(draftWaypoints, direction, addMinutesToTime(draftWaypoints.pickupTime, liveMetrics?.durationMins ?? tour.routeDurationMins));
+  const rows = itinRowsFromWaypoints(draftWaypoints, direction, addMinutesToTime(draftWaypoints.pickupTime, mode === "charter" ? (tour.routeDurationMins ?? liveMetrics?.durationMins) : (liveMetrics?.durationMins ?? tour.routeDurationMins)), mode);
 
   const handleSave = () => {
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1800);
   };
 
-  const tabBar = (
-    <div className="mx-[10%] mt-5 flex justify-center overflow-x-auto">
-      <div role="tablist" className="inline-flex gap-1.5 rounded-full border border-white/60 bg-white/60 p-1.5 shadow-sm backdrop-blur">
-        {ITIN_EDITOR_TABS.map((t) => (
-          <button key={t} type="button" role="tab" aria-selected={itinTab === t} onClick={() => setItinTab(t)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${itinTab === t ? "text-white shadow" : "hover:bg-white/70"}`}
-            style={itinTab === t ? { background: ZG_GRADIENT } : { color: "rgba(59,30,14,0.55)" }}>
-            {t}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 
-  return (
-    <div className="-m-8 flex min-h-screen flex-col justify-center py-10 sm:py-12" style={{ background: "linear-gradient(135deg, #FFF8F0 0%, #FDF0E4 45%, #EFF6FF 100%)", fontFamily: "'Wix Madefor Display', 'Inter', sans-serif" }}>
-      {itinTab !== "Airport Transfer" ? (<>
-        {tabBar}
-        <div className="mx-[10%] mt-3 flex min-h-[50vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
-          <h1 className="text-[30px] font-extrabold tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{itinTab}</h1>
-          <p className="mt-2 text-sm" style={{ color: "rgba(59,30,14,0.5)" }}>The {itinTab} itinerary editor is coming soon.</p>
-        </div>
-      </>) : (<>
-      <div className="mx-[10%] flex flex-wrap items-center justify-between gap-3">
-        <button type="button" onClick={onBack}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/60 bg-white/70 pl-2.5 pr-4 text-sm font-semibold shadow-sm backdrop-blur transition hover:bg-white" style={{ color: "#3b1e0e" }}>
-          <IconChevronLeft size={16} />Back To My Trips
-        </button>
-      </div>
-
+  return (<>
+      {backRow}
       {tabBar}
       <div className="mx-[10%] mt-4 rounded-2xl border border-white/50 px-4 py-3.5 shadow-sm sm:px-5" style={{ background: "rgba(255,255,255,0.45)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
         <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgba(59,30,14,0.45)" }}>Frequently Used Routes</p>
@@ -3190,7 +3210,7 @@ function ItineraryEditorView({ tours, onBack }) {
           onPointerUp={() => { routesDragRef.current.active = false; }}
           onPointerLeave={() => { routesDragRef.current.active = false; }}
           onClickCapture={(e) => { if (routesDragRef.current.moved) { e.stopPropagation(); e.preventDefault(); routesDragRef.current.moved = false; } }}>
-          {airportTours.map((t) => {
+          {templates.map((t) => {
             const active = t.id === tour.id;
             return (
               <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => setSelectedId(t.id)} title={`${t.id} · ${t.tripName}`}
@@ -3205,7 +3225,7 @@ function ItineraryEditorView({ tours, onBack }) {
       <div className="mx-[10%] mt-4 rounded-[32px] border border-white/50 p-5 shadow-xl sm:p-7" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Airport Transfer</h1>
+            <h1 className="text-[34px] font-extrabold leading-tight tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{modeTitle}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <svg width="72" height="52" viewBox="0 0 72 52" className="hidden shrink-0 sm:block" aria-hidden="true">
@@ -3226,9 +3246,11 @@ function ItineraryEditorView({ tours, onBack }) {
           </div>
         </div>
 
-        <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm">
-          <AirportDirectionPicker value={direction} onChange={handleSwitchAirportDir} />
-        </div>
+        {mode === "airport" && (
+          <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm">
+            <AirportDirectionPicker value={direction} onChange={handleSwitchAirportDir} />
+          </div>
+        )}
 
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
           {/* Left column: itinerary list + save */}
@@ -3344,9 +3366,7 @@ function ItineraryEditorView({ tours, onBack }) {
         </div>
         </div>
       </div>
-      </>)}
-    </div>
-  );
+    </>);
 }
 
 /* ---------------- App shell ---------------- */
