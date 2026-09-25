@@ -3498,10 +3498,33 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
                 <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
+                  {(needsExactAddress || (mode === "charter" && row.key === "dropoff")) && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-4 pl-[3.75rem] sm:px-5 sm:pl-[4.25rem]">
+                      {needsExactAddress && (
+                        <span className="text-[12px] font-medium text-red-500">
+                          {row.key === "pickup" ? "Please enter your pickup location." : "Please enter your drop-off location."}
+                        </span>
+                      )}
+                      {mode === "charter" && row.key === "dropoff" && (
+                        <label className="inline-flex w-fit cursor-pointer select-none items-center gap-2 text-[12px] font-medium text-gray-600">
+                      <input type="checkbox" checked={sameAsStart} className="h-4 w-4 cursor-pointer accent-orange-500"
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSameAsStart(on);
+                          if (on) {
+                            patch({ dropoff: draftWaypoints.pickup, dropoffMapLocation: draftWaypoints.pickupMapLocation ?? null });
+                            setConfirmedEnds((c) => ({ ...c, dropoff: c.pickup }));
+                          }
+                        }} />
+                      Same as Start Spot
+                    </label>
+                      )}
+                    </div>
+                  )}
                   <div role={expandable ? "button" : undefined} tabIndex={expandable ? 0 : undefined}
                     onClick={() => expandable && setExpanded(isOpen ? null : row.key)}
                     onKeyDown={(e) => { if (expandable && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); setExpanded(isOpen ? null : row.key); } }}
-                    className={`flex w-full items-center gap-3 px-4 text-left transition sm:gap-4 sm:px-5 ${isStop ? "py-3.5" : "min-h-[88px] py-5"} ${expandable ? "cursor-pointer hover:bg-gray-50/80" : ""}`}>
+                    className={`flex w-full items-center gap-3 px-4 text-left transition sm:gap-4 sm:px-5 ${isStop ? "py-3.5" : (needsExactAddress || (mode === "charter" && row.key === "dropoff")) ? "pb-5 pt-2" : "min-h-[88px] py-5"} ${expandable ? "cursor-pointer hover:bg-gray-50/80" : ""}`}>
                     {isStop ? (
                       <>
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
@@ -3511,11 +3534,6 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white" style={{ background: color }}><row.icon size={15} /></span>
                     )}
                     <div className={`flex min-w-0 flex-1 flex-col ${isStop ? "gap-1" : "gap-2"}`}>
-                      {needsExactAddress && (
-                        <span className="block pl-1 text-[12px] font-medium text-red-500">
-                          {row.key === "pickup" ? "Please enter your pickup location." : "Please enter your drop-off location."}
-                        </span>
-                      )}
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
@@ -3537,20 +3555,6 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                         </div>
                       ) : (
                         <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name || "Not set"}</span>
-                      )}
-                      {mode === "charter" && row.key === "dropoff" && (
-                        <label className="inline-flex w-fit cursor-pointer select-none items-center gap-2 pl-1 text-[13px] font-medium text-gray-600">
-                          <input type="checkbox" checked={sameAsStart} className="h-4 w-4 cursor-pointer accent-orange-500"
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setSameAsStart(on);
-                              if (on) {
-                                patch({ dropoff: draftWaypoints.pickup, dropoffMapLocation: draftWaypoints.pickupMapLocation ?? null });
-                                setConfirmedEnds((c) => ({ ...c, dropoff: c.pickup }));
-                              }
-                            }} />
-                          Same as Start Spot
-                        </label>
                       )}
                       {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${alignIndent}`}>{row.meta}</span>}
                     </div>
