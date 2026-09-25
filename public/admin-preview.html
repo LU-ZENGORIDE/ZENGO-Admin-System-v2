@@ -3174,9 +3174,6 @@ function ItineraryEditorView({ tours, onBack }) {
             <h1 className="text-[34px] font-extrabold leading-tight tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Airport Transfer</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <button type="button" onClick={handleSave} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#121621] px-4 text-sm font-semibold text-white transition hover:bg-gray-800">
-              <IconCheck size={14} />Save
-            </button>
             <svg width="72" height="52" viewBox="0 0 72 52" className="hidden shrink-0 sm:block" aria-hidden="true">
               <path d="M6 40 Q30 10 66 12" fill="none" stroke="#FDBA74" strokeWidth="2" strokeDasharray="4 5" strokeLinecap="round" />
               <g transform="translate(50,8) rotate(35)">
@@ -3198,10 +3195,10 @@ function ItineraryEditorView({ tours, onBack }) {
         <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm">
           <AirportDirectionPicker value={direction} onChange={handleSwitchAirportDir} />
         </div>
-        {savedFlash && <p className="mt-2 text-xs font-semibold text-emerald-700">Saved for this order — the Catalog template is unchanged.</p>}
 
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
-          {/* Left column: itinerary list */}
+          {/* Left column: itinerary list + save */}
+          <div className="flex flex-col gap-3">
           <div className="rounded-2xl bg-white shadow-sm">
             <div className="flex items-center justify-between gap-3 rounded-t-2xl border-b border-gray-100 px-4 py-2.5 sm:px-5">
               <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Route</span>
@@ -3289,6 +3286,14 @@ function ItineraryEditorView({ tours, onBack }) {
                 </div>
               );
             })}
+          </div>
+
+          <button type="button" onClick={handleSave}
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-white shadow-md transition hover:opacity-90 hover:shadow-lg"
+            style={{ background: ZG_GRADIENT }}>
+            <IconCheck size={16} />Save
+          </button>
+          {savedFlash && <p className="text-center text-xs font-semibold text-emerald-700">Saved for this order — the Catalog template is unchanged.</p>}
           </div>
 
           {/* Right column: map */}
