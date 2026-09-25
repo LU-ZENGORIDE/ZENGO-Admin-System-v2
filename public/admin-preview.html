@@ -3511,6 +3511,11 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white" style={{ background: color }}><row.icon size={15} /></span>
                     )}
                     <div className={`flex min-w-0 flex-1 flex-col ${isStop ? "gap-1" : "gap-2"}`}>
+                      {needsExactAddress && (
+                        <span className="block pl-1 text-[12px] font-medium text-red-500">
+                          {row.key === "pickup" ? "Please enter your pickup location." : "Please enter your drop-off location."}
+                        </span>
+                      )}
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
@@ -3546,11 +3551,6 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                             }} />
                           Same as Start Spot
                         </label>
-                      )}
-                      {needsExactAddress && (
-                        <span className="block pl-1 text-[12px] font-medium text-red-500">
-                          {row.key === "pickup" ? "Please enter your pickup location." : "Please enter your drop-off location."}
-                        </span>
                       )}
                       {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${alignIndent}`}>{row.meta}</span>}
                     </div>
