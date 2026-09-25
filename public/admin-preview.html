@@ -113,6 +113,8 @@ const OFFICE_LOCATIONS = ["Tokyo", "Osaka", "Nagoya", "Sapporo"];
 const CHARTER_REGIONS = ["Tokyo Area", "Kyoto Area", "Osaka Area", "Hokkaido Area", "Nagoya Area"];
 const OFFICE_REGION = { Tokyo: "Tokyo Area", Osaka: "Osaka Area", Nagoya: "Nagoya Area", Sapporo: "Hokkaido Area" };
 const regionOfTour = (t) => t.region ?? OFFICE_REGION[t.officeLocation] ?? null;
+/* Editable region list (Catalog › Region Management), shared by the template modal and Itinerary Editor. */
+const RegionsCtx = createContext({ regions: CHARTER_REGIONS, saveRegions: () => {} });
 const SERVICE_TYPES = ["Sightseeing Charter", "Airport", "Fixed Route"];
 const DURATION_TIERS = ["Half Day", "Full Day"];
 const AIRPORT_CODES = { "Narita Airport": "NRT", "Haneda Airport": "HND", "Kansai Airport": "KIX", "Osaka Itami Airport": "ITM", "Chubu Centrair Airport": "NGO", "New Chitose Airport": "CTS" };
@@ -279,7 +281,7 @@ function buildAirportPresetTours() {
     };
   });
 }
-const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()].map((t) => ({ ...t, region: t.region ?? OFFICE_REGION[t.officeLocation] ?? null }));
+const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()].map((t) => ({ ...t, region: t.serviceType === "Airport" ? null : (t.region ?? OFFICE_REGION[t.officeLocation] ?? null) }));
 
 const SIGHTSEEING_PRICE_SEED = [
   { id: "sp-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 10000, fullDayPrice: 12000 },
@@ -875,7 +877,55 @@ function SortIcon({ active, dir }) {
   return dir === "asc" ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />;
 }
 
+function RegionManagementModal({ tours, onClose }) {
+  const { regions, saveRegions } = useContext(RegionsCtx);
+  const [rows, setRows] = useState(() => regions.map((r, i) => ({ key: `r-${i}`, original: r, name: r })));
+  const [error, setError] = useState("");
+  const usage = (name) => (name ? tours.filter((t) => t.serviceType !== "Airport" && t.region === name).length : 0);
+  const patchRow = (key, name) => { setRows((prev) => prev.map((r) => (r.key === key ? { ...r, name } : r))); setError(""); };
+  const addRow = () => setRows((prev) => [...prev, { key: `new-${Date.now()}`, original: null, name: "" }]);
+  const removeRow = (key) => setRows((prev) => prev.filter((r) => r.key !== key));
+  const handleSave = () => {
+    const cleaned = rows.map((r) => ({ ...r, name: r.name.trim() }));
+    if (cleaned.some((r) => !r.name)) return setError("Every region needs a name.");
+    const names = cleaned.map((r) => r.name.toLowerCase());
+    if (new Set(names).size !== names.length) return setError("Region names must be unique.");
+    saveRegions(cleaned.map(({ original, name }) => ({ original, name })));
+    onClose();
+  };
+  return (
+    <ModalShell title="Region Management" onClose={onClose}
+      footer={(<>
+        {error && <p className="mr-auto text-xs font-medium text-red-600">{error}</p>}
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" onClick={handleSave} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">Save</button>
+      </>)}>
+      <p className="text-xs" style={{ color: "var(--text-3)" }}>Regions group templates for customers (e.g. the Tour Charter Product Catalog filter). Renaming a region updates every template that uses it.</p>
+      <div className="flex flex-col gap-2">
+        {rows.map((r) => {
+          const count = usage(r.original);
+          return (
+            <div key={r.key} className="flex items-center gap-2">
+              <input type="text" value={r.name} onChange={(e) => patchRow(r.key, e.target.value)} placeholder="Region name"
+                className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <span className="w-24 shrink-0 text-right text-xs tabular-nums" style={{ color: "var(--text-3)" }}>{count} template{count === 1 ? "" : "s"}</span>
+              <button type="button" disabled={count > 0} onClick={() => removeRow(r.key)}
+                title={count > 0 ? "In use — move its templates to another region first" : "Remove region"}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-red-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent">
+                <IconTrash size={15} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" onClick={addRow} className="inline-flex w-fit items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+        <IconPlus size={13} />Add region
+      </button>
+    </ModalShell>
+  );
+}
 function TourCatalogView({ tours, onToggleStatus, onEdit, onAddTour, onRefresh, onDelete, onOpenBooking }) {
+  const [regionModalOpen, setRegionModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [officeFilter, setOfficeFilter] = useState([]);
@@ -958,12 +1008,17 @@ function TourCatalogView({ tours, onToggleStatus, onEdit, onAddTour, onRefresh, 
             className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}>
             <IconRefresh size={16} />
           </button>
+          <button type="button" onClick={() => setRegionModalOpen(true)}
+            className="inline-flex h-[38px] items-center gap-2 rounded-lg border px-4 text-sm font-semibold transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-card)" }}>
+            <IconMapPin size={16} /> Region Management
+          </button>
           <button type="button" onClick={onAddTour}
             className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-[#FACC15] px-[18px] text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
             <IconPlus size={16} /> Add Template
           </button>
         </div>
       </div>
+      {regionModalOpen && <RegionManagementModal tours={tours} onClose={() => setRegionModalOpen(false)} />}
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3.5 shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
         <div className="relative max-w-[340px] flex-1 min-w-[220px]">
@@ -1101,6 +1156,7 @@ function TTFieldLabel({ children }) {
   return <label className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{children}</label>;
 }
 function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDelete, onOpenBooking }) {
+  const { regions } = useContext(RegionsCtx);
   const [draft, setDraft] = useState(null);
   const [baseline, setBaseline] = useState(null);
   const [mode, setMode] = useState("view");
@@ -1173,8 +1229,9 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
   };
   const selectOffice = (loc) => {
     /* Follow the office's default region unless the region was set to something else by hand. */
-    const regionIsDefault = !draft.region || draft.region === OFFICE_REGION[draft.officeLocation];
-    let patch = withSuggestedPrice({ officeLocation: loc, ...(regionIsDefault ? { region: OFFICE_REGION[loc] ?? draft.region ?? null } : {}) });
+    const regionIsDefault = draft.serviceType !== "Airport" && (!draft.region || draft.region === OFFICE_REGION[draft.officeLocation]);
+    const officeDefault = regions.includes(OFFICE_REGION[loc]) ? OFFICE_REGION[loc] : null;
+    let patch = withSuggestedPrice({ officeLocation: loc, ...(regionIsDefault ? { region: officeDefault ?? draft.region ?? null } : {}) });
     if (draft.serviceType === "Airport") {
       const resolved = resolveAirportPickup(loc);
       patch = { ...patch, airport: resolved.airport };
@@ -1364,16 +1421,19 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
               </div>
             </DebugField>
 
+            {draft.serviceType !== "Airport" && (
             <DebugField model="tour_templates" field="region">
               <div>
                 <TTFieldLabel>Region</TTFieldLabel>
                 <select value={draft.region ?? ""} disabled={locked} onChange={(e) => commit("Region changed", { region: e.target.value || null })}
                   className={`${fieldClass} disabled:cursor-default`} style={fieldStyle}>
                   <option value="" disabled>Select region…</option>
-                  {CHARTER_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {draft.region && !regions.includes(draft.region) && <option value={draft.region}>{draft.region}</option>}
                 </select>
               </div>
             </DebugField>
+            )}
 
             {draft.serviceType === "Airport" ? (
               draft.officeLocation && (
@@ -3154,6 +3214,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   /* Charter only: when on, the End Spot mirrors the Start Spot (round trip). */
   const [sameAsStart, setSameAsStart] = useState(false);
   const [region, setRegion] = useState("All");
+  const { regions } = useContext(RegionsCtx);
   const visibleTemplates = mode === "charter" && region !== "All" ? templates.filter((t) => regionOfTour(t) === region) : templates;
   const changeRegion = (r) => {
     setRegion(r);
@@ -3259,7 +3320,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               <select value={region} onChange={(e) => changeRegion(e.target.value)} aria-label="Region"
                 className="cursor-pointer appearance-none rounded-full border border-white/70 bg-white/80 py-1.5 pl-3 pr-8 text-xs font-semibold outline-none transition hover:bg-white focus:ring-2 focus:ring-orange-200" style={{ color: "#3b1e0e" }}>
                 <option value="All">All Regions</option>
-                {CHARTER_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                {regions.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
               <IconChevronDown size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
@@ -3504,6 +3565,14 @@ function AdminShell() {
   const [systemView, setSystemView] = useState("admin");
   const [activeView, setActiveView] = useState("tour-catalog");
   const [tours, setTours] = useState(SEED_TOURS);
+  const [regions, setRegions] = useState(CHARTER_REGIONS);
+  /* edits: [{ original: string|null, name }] — renames carry over to templates using the old name. */
+  const saveRegions = useCallback((edits) => {
+    setRegions(edits.map((e) => e.name));
+    const renames = Object.fromEntries(edits.filter((e) => e.original && e.original !== e.name).map((e) => [e.original, e.name]));
+    if (Object.keys(renames).length) setTours((prev) => prev.map((t) => (t.region && renames[t.region] ? { ...t, region: renames[t.region] } : t)));
+  }, []);
+  const regionsValue = useMemo(() => ({ regions, saveRegions }), [regions, saveRegions]);
   const [modalTour, setModalTour] = useState(null);
   const [isNewTour, setIsNewTour] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
@@ -3536,6 +3605,7 @@ function AdminShell() {
   return (
     <DebugCtx.Provider value={{ debugMode, toggle: () => setDebugMode((v) => !v) }}>
       <AirportPricingCtx.Provider value={airportPricingValue}>
+      <RegionsCtx.Provider value={regionsValue}>
       <div className="min-h-screen" style={{ background: "var(--bg-app)" }}>
         <Sidebar activeView={activeView} onNavigate={setActiveView} systemView={systemView} onSystemChange={setSystemView} />
         <main className="ml-56 min-h-screen p-8">
@@ -3558,6 +3628,7 @@ function AdminShell() {
           <ItineraryPlanner itinerary={bookingItinerary} sequence={bookingPreviewTour.id.replace(/[^0-9]/g, "").padStart(4, "0").slice(-4) || "0001"} onClose={() => setBookingPreviewTour(null)} />
         )}
       </div>
+      </RegionsCtx.Provider>
       </AirportPricingCtx.Provider>
     </DebugCtx.Provider>
   );
