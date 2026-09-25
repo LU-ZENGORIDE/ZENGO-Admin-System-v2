@@ -17,6 +17,9 @@ interface MapLocationPickerProps {
   /** "compact" drops the text label and stretch-to-row sizing in favor of
    * a small fixed square — for tight grid rows (e.g. the route editor). */
   size?: "default" | "compact";
+  /** Shows an editable radius (km) alongside the picked location — used for
+   * Fixed Route pick-up spots, whose coordinate matches within a catchment. */
+  radiusEditable?: boolean;
 }
 
 const triggerStyles: Record<PickerTheme, { empty: string; filled: string }> = {
@@ -40,6 +43,7 @@ export default function MapLocationPicker({
   label,
   theme = "dark",
   size = "default",
+  radiusEditable = false,
 }: MapLocationPickerProps) {
   const [open, setOpen] = useState(false);
   const styles = triggerStyles[theme];
@@ -83,6 +87,7 @@ export default function MapLocationPicker({
           label={label}
           initial={value}
           theme={theme}
+          radiusEditable={radiusEditable}
           onClose={() => setOpen(false)}
           onSave={(loc) => {
             onChange(loc);
@@ -98,22 +103,26 @@ function MapLocationModal({
   label,
   initial,
   theme,
+  radiusEditable = false,
   onClose,
   onSave,
 }: {
   label: string;
   initial: MapLocation | null;
   theme: PickerTheme;
+  radiusEditable?: boolean;
   onClose: () => void;
   onSave: (location: MapLocation) => void;
 }) {
   const searchId = useId();
   const [query, setQuery] = useState(initial?.title ?? "");
   const [selected, setSelected] = useState<MapLocation | null>(initial);
+  const [radiusKm, setRadiusKm] = useState(initial?.radiusKm ?? 10);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const suggestions = searchMapLocations(query);
   const isLight = theme === "light";
+  const circleSize = Math.max(50, Math.min(160, radiusKm * 2.6));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -249,6 +258,12 @@ function MapLocationModal({
             <div
               className={`absolute inset-0 ${isLight ? "bg-white/20" : "bg-slate-900/30"}`}
             />
+            {radiusEditable && selected && (
+              <div
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-[#FACC15]/80 bg-[#FACC15]/10 transition-all"
+                style={{ width: circleSize, height: circleSize }}
+              />
+            )}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative">
                 <MapPin
@@ -286,6 +301,42 @@ function MapLocationModal({
               {displayLocation.address}
             </p>
           </div>
+
+          {radiusEditable && selected && (
+            <div
+              className={`mt-3 rounded-lg px-3 py-2 ${isLight ? "bg-gray-50" : "bg-white/5"}`}
+            >
+              <label
+                className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide ${isLight ? "text-gray-400" : "text-white/40"}`}
+              >
+                Effective Radius
+              </label>
+              <div
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 ${isLight ? "border-gray-200 bg-white" : "border-white/15 bg-white/5"}`}
+              >
+                <input
+                  type="number"
+                  min="0"
+                  value={radiusKm}
+                  onChange={(e) =>
+                    setRadiusKm(parseInt(e.target.value, 10) || 0)
+                  }
+                  className={`w-full min-w-0 bg-transparent text-sm tabular-nums outline-none ${isLight ? "text-gray-900" : "text-white"}`}
+                />
+                <span
+                  className={`shrink-0 text-xs ${isLight ? "text-gray-400" : "text-white/40"}`}
+                >
+                  km
+                </span>
+              </div>
+              <p
+                className={`mt-1.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}
+              >
+                Pickups within this radius of the pin count as this
+                coordinate for Fixed Route matching.
+              </p>
+            </div>
+          )}
         </div>
 
         <div
@@ -305,7 +356,10 @@ function MapLocationModal({
           <button
             type="button"
             disabled={!selected}
-            onClick={() => selected && onSave(selected)}
+            onClick={() =>
+              selected &&
+              onSave(radiusEditable ? { ...selected, radiusKm } : selected)
+            }
             className={`rounded-xl border py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
               isLight
                 ? "border-gray-800 bg-gray-900 text-white hover:bg-gray-800"
