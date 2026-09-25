@@ -109,6 +109,10 @@ function serviceTypeBadge(type) {
   return "bg-gray-100 text-gray-500";
 }
 const OFFICE_LOCATIONS = ["Tokyo", "Osaka", "Nagoya", "Sapporo"];
+/* Region is the customer-facing area a template is sold under; it defaults from the office but can differ (e.g. Kyoto tours run from Osaka). */
+const CHARTER_REGIONS = ["Tokyo Area", "Kyoto Area", "Osaka Area", "Hokkaido Area", "Nagoya Area"];
+const OFFICE_REGION = { Tokyo: "Tokyo Area", Osaka: "Osaka Area", Nagoya: "Nagoya Area", Sapporo: "Hokkaido Area" };
+const regionOfTour = (t) => t.region ?? OFFICE_REGION[t.officeLocation] ?? null;
 const SERVICE_TYPES = ["Sightseeing Charter", "Airport", "Fixed Route"];
 const DURATION_TIERS = ["Half Day", "Full Day"];
 const AIRPORT_CODES = { "Narita Airport": "NRT", "Haneda Airport": "HND", "Kansai Airport": "KIX", "Osaka Itami Airport": "ITM", "Chubu Centrair Airport": "NGO", "New Chitose Airport": "CTS" };
@@ -275,7 +279,7 @@ function buildAirportPresetTours() {
     };
   });
 }
-const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()];
+const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()].map((t) => ({ ...t, region: t.region ?? OFFICE_REGION[t.officeLocation] ?? null }));
 
 const SIGHTSEEING_PRICE_SEED = [
   { id: "sp-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 10000, fullDayPrice: 12000 },
@@ -1168,7 +1172,9 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
     commit("Service type selected", patch);
   };
   const selectOffice = (loc) => {
-    let patch = withSuggestedPrice({ officeLocation: loc });
+    /* Follow the office's default region unless the region was set to something else by hand. */
+    const regionIsDefault = !draft.region || draft.region === OFFICE_REGION[draft.officeLocation];
+    let patch = withSuggestedPrice({ officeLocation: loc, ...(regionIsDefault ? { region: OFFICE_REGION[loc] ?? draft.region ?? null } : {}) });
     if (draft.serviceType === "Airport") {
       const resolved = resolveAirportPickup(loc);
       patch = { ...patch, airport: resolved.airport };
@@ -1355,6 +1361,17 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                     </button>
                   ))}
                 </div>
+              </div>
+            </DebugField>
+
+            <DebugField model="tour_templates" field="region">
+              <div>
+                <TTFieldLabel>Region</TTFieldLabel>
+                <select value={draft.region ?? ""} disabled={locked} onChange={(e) => commit("Region changed", { region: e.target.value || null })}
+                  className={`${fieldClass} disabled:cursor-default`} style={fieldStyle}>
+                  <option value="" disabled>Select region…</option>
+                  {CHARTER_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
               </div>
             </DebugField>
 
@@ -3084,9 +3101,6 @@ function deriveAirportDirection(tour) {
   return { direction: "from", from: null, to: null };
 }
 const ITIN_MODE_TITLES = { airport: "Airport Transfer", charter: "Tour Charter" };
-const CHARTER_REGIONS = ["Tokyo Area", "Kyoto Area", "Osaka Area", "Hokkaido Area", "Nagoya Area"];
-const OFFICE_REGION = { Tokyo: "Tokyo Area", Osaka: "Osaka Area", Nagoya: "Nagoya Area", Sapporo: "Hokkaido Area" };
-const regionOfTour = (t) => t.region ?? OFFICE_REGION[t.officeLocation] ?? null;
 function ItineraryEditorView({ tours, onBack }) {
   const [itinTab, setItinTab] = useState("Airport Transfer");
   const airportTours = useMemo(() => tours.filter((t) => t.serviceType === "Airport"), [tours]);
@@ -3462,7 +3476,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
 /* ---------------- App shell ---------------- */
 function createEmptyTour() {
   return {
-    id: "-----", reference: "-----", tripName: "", officeLocation: null, durationTier: null, status: "inactive", price: null, startTime: "09:00",
+    id: "-----", reference: "-----", tripName: "", officeLocation: null, region: null, durationTier: null, status: "inactive", price: null, startTime: "09:00",
     viewedCount: 0, bookedCount: 0, serviceType: null, airport: null,
     userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null,
     driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
