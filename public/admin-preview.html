@@ -2978,6 +2978,11 @@ function AirportDirectionPicker({ fromValue, toValue, onChangeFrom, onChangeTo, 
   const airports = Object.keys(AIRPORT_CODES);
   const value = activeDir === "from" ? fromValue : activeDir === "to" ? toValue : null;
   const onChange = activeDir === "from" ? onChangeFrom : onChangeTo;
+  /* Follow external direction changes (e.g. the itinerary's reverse button swapping from/to). */
+  useEffect(() => {
+    if (fromValue && !toValue) setActiveDir("from");
+    else if (toValue && !fromValue) setActiveDir("to");
+  }, [fromValue, toValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -3098,6 +3103,12 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
     if (dir === "from") { setToAirport(null); patch({ dropoff: "", dropoffMapLocation: null }); }
     if (dir === "to") { setFromAirport(null); patch({ pickup: "", pickupMapLocation: null }); }
   };
+  const handleReverse = () => {
+    setDraftWaypoints((prev) => ({ ...prev, pickup: prev.dropoff, pickupMapLocation: prev.dropoffMapLocation ?? null, dropoff: prev.pickup, dropoffMapLocation: prev.pickupMapLocation ?? null, stopovers: [...prev.stopovers].reverse() }));
+    setFromAirport(toAirport);
+    setToAirport(fromAirport);
+    setExpanded(null);
+  };
   const patchStop = (i, p) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
   const addStop = () => setDraftWaypoints((prev) => ({ ...prev, stopovers: [...prev.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] }));
   const removeStop = (i) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.filter((_, j) => j !== i) }));
@@ -3164,13 +3175,20 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
           {/* Left column: itinerary list */}
           <div className="rounded-2xl bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-3 rounded-t-2xl border-b border-gray-100 px-4 py-2.5 sm:px-5">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Route</span>
+              <button type="button" onClick={handleReverse} title="Swap start and end spots (stopovers are reversed too)"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-semibold transition hover:bg-orange-100" style={{ color: "#EA580C" }}>
+                <IconArrowUpDown size={13} />Reverse start &amp; end
+              </button>
+            </div>
             {rows.map((row, i) => {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
               const isOpen = expanded === row.key;
               const isStop = row.key.startsWith("stop-");
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
-                <div key={row.key} className={`${i !== rows.length - 1 ? "border-b border-gray-100" : ""} ${i === 0 ? "rounded-t-2xl" : ""} ${i === 0 && !isOpen ? "overflow-hidden" : ""}`}>
+                <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
                   <button type="button" onClick={() => setExpanded(isOpen ? null : row.key)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-gray-50/80 sm:gap-4 sm:px-5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"><row.icon size={16} /></span>
