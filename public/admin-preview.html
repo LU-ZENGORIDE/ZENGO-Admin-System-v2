@@ -636,14 +636,6 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
     const rows = freshRows.map((row) => { const prev = prevByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
     onChange({ office: officeLocation, airport, rows });
   };
-  const toggleCustom = (index) => {
-    const rows = [...activeRows]; const row = rows[index]; const willBeOn = !row.custom;
-    rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(row.fixedFee) : "" };
-    onChange({ office: activeOffice, airport: activeAirport, rows });
-  };
-  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value, custom: value.trim() !== "" }; onChange({ office: activeOffice, airport: activeAirport, rows }); };
-  const overrideCount = activeRows.filter((r) => r.custom).length;
-  const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
   return (
     <div className="relative rounded-xl border border-gray-200 p-4">
       <button type="button" title="Reload from CMS" disabled={locked} onClick={handleReload}
@@ -664,31 +656,24 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Name","Owner","Fixed Ranges","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+              {["Vehicle Name","Owner","Fixed Ranges"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
             </tr></thead>
             <tbody>
-              {activeRows.map((row, i) => {
-                const invalid = row.custom && !row.customPrice.trim();
-                return (
-                  <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
-                    <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
-                    <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
-                    <td className="px-2 py-[9px] text-gray-600">
-                      {row.ranges.length === 0 ? <span className="text-gray-300">—</span> : (
-                        <div className="flex flex-wrap gap-1">
-                          {row.ranges.map((r, ri) => (
-                            <span key={ri} className="whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">{r.name || `Range ${ri + 1}`} · ≤{r.radiusKm}km · {formatPrice(r.fixedFee)}</span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 py-[9px]">
-                      <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={"Default"} title="Leave empty to use the default price"
-                        className={`w-full min-w-[96px] rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none placeholder:font-normal placeholder:text-gray-300 ${row.custom ? "border-[#FACC15] bg-yellow-50 text-gray-900" : "border-gray-200 bg-white text-gray-900"} ${locked ? "cursor-default" : "focus:border-gray-400"}`} />
-                    </td>
-                  </tr>
-                );
-              })}
+              {activeRows.map((row) => (
+                <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
+                  <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
+                  <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
+                  <td className="px-2 py-[9px] text-gray-600">
+                    {row.ranges.length === 0 ? <span className="text-gray-300">—</span> : (
+                      <div className="flex flex-wrap gap-1">
+                        {row.ranges.map((r, ri) => (
+                          <span key={ri} className="whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">{r.name || `Range ${ri + 1}`} · ≤{r.radiusKm}km · {formatPrice(r.fixedFee)}</span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

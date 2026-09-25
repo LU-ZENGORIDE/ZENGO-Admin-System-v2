@@ -58,8 +58,6 @@ export default function AirportVehiclePricingTable({
 
   /** Nothing has been customized/reloaded yet — show the live Pricing CMS
    * list for the current office+airport without requiring an explicit load. */
-  const activeOffice = pricing?.office ?? officeLocation;
-  const activeAirport = pricing?.airport ?? airport;
   const activeRows =
     pricing?.rows ?? loadRowsForOfficeAirport(officeLocation, airport);
 
@@ -74,29 +72,6 @@ export default function AirportVehiclePricingTable({
     });
     onChange({ office: officeLocation, airport, rows });
   };
-
-  const toggleCustom = (index: number) => {
-    const rows = [...activeRows];
-    const row = rows[index];
-    const willBeOn = !row.custom;
-    rows[index] = {
-      ...row,
-      custom: willBeOn,
-      customPrice: willBeOn ? String(row.fixedFee) : "",
-    };
-    onChange({ office: activeOffice, airport: activeAirport, rows });
-  };
-
-  const setCustomPrice = (index: number, value: string) => {
-    const rows = [...activeRows];
-    rows[index] = { ...rows[index], customPrice: value };
-    onChange({ office: activeOffice, airport: activeAirport, rows });
-  };
-
-  const overrideCount = activeRows.filter((r) => r.custom).length;
-  const missingCount = activeRows.filter(
-    (r) => r.custom && !r.customPrice.trim(),
-  ).length;
 
   return (
     <div className="relative rounded-xl border border-gray-200 p-4">
@@ -170,98 +145,38 @@ export default function AirportVehiclePricingTable({
                 <th className="px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-gray-500">
                   Excess ¥/km
                 </th>
-                <th className="w-16 px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                  Custom
-                </th>
-                <th className="w-[104px] px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                  Custom Price ¥
-                </th>
               </tr>
             </thead>
             <tbody>
-              {activeRows.map((row, i) => {
-                const invalid = row.custom && !row.customPrice.trim();
-                return (
-                  <tr
-                    key={rowKey(row)}
-                    className="border-b border-gray-100 last:border-b-0"
-                  >
-                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">
-                      {row.vehicleType}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">
-                      {row.vehicleName}
-                    </td>
-                    <td className="px-2 py-[9px] text-gray-600">
-                      {row.owner}
-                    </td>
-                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
-                      {row.fixedFee}
-                    </td>
-                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
-                      {row.distanceCapKm}
-                    </td>
-                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
-                      {row.excessRatePerKm}
-                    </td>
-                    <td className="px-2 py-[9px]">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={row.custom}
-                        disabled={locked}
-                        onClick={() => toggleCustom(i)}
-                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${
-                          row.custom
-                            ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]"
-                            : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"
-                        }`}
-                      >
-                        {row.custom ? (
-                          <>
-                            ON
-                            <span className="ml-1 h-4 w-4 rounded-full bg-white" />
-                          </>
-                        ) : (
-                          <>
-                            <span className="mr-1 h-4 w-4 rounded-full bg-white" />
-                            OFF
-                          </>
-                        )}
-                      </button>
-                    </td>
-                    <td className="px-2 py-[9px]">
-                      {!row.custom ? (
-                        <span className="text-gray-300">—</span>
-                      ) : (
-                        <input
-                          type="number"
-                          min="0"
-                          step="1000"
-                          readOnly={locked}
-                          value={row.customPrice}
-                          onChange={(e) => setCustomPrice(i, e.target.value)}
-                          placeholder={invalid ? "Required" : undefined}
-                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${
-                            invalid
-                              ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400"
-                              : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"
-                          }`}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              {activeRows.map((row) => (
+                <tr
+                  key={rowKey(row)}
+                  className="border-b border-gray-100 last:border-b-0"
+                >
+                  <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">
+                    {row.vehicleType}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">
+                    {row.vehicleName}
+                  </td>
+                  <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
+                  <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
+                    {row.fixedFee}
+                  </td>
+                  <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
+                    {row.distanceCapKm}
+                  </td>
+                  <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
+                    {row.excessRatePerKm}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
           <div className="flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-3 py-[9px]">
             <p className="text-xs text-gray-500">
-              {activeRows.length} available vehicles from Pricing CMS ·{" "}
-              {overrideCount} custom override
-              {overrideCount === 1 ? "" : "s"}
-              {missingCount > 0 && ` · ${missingCount} missing a price`}
+              {activeRows.length} available vehicles from Pricing CMS
             </p>
             <p className="whitespace-nowrap text-xs font-semibold text-gray-900">
               Fixed fee ¥ applies to this template ({airportDisplayName(airport)})
