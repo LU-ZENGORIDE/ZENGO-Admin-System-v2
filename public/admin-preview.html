@@ -3206,7 +3206,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                       ) : (
                         <span className="block truncate text-[15px] font-bold text-gray-900">{row.name || "Not set"}</span>
                       )}
-                      {row.meta && <span className="block truncate text-[13px] text-gray-500">{row.meta}</span>}
+                      {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${airportRow ? "pl-3" : ""}`}>{row.meta}</span>}
                     </div>
                     <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold sm:inline-flex" style={{ color }}>
                       {row.label}
