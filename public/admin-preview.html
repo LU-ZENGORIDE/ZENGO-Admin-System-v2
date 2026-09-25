@@ -3232,7 +3232,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                       )}
                       {row.key === "pickup" && (
                         <div className="max-w-[220px]">
-                          <MiniTimePicker icon={IconClock} label="Departure time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })} />
+                          <MiniTimePicker icon={IconClock} label="Pick-up Time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })} />
                         </div>
                       )}
                       {isStop && (
