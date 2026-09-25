@@ -170,6 +170,13 @@ function formatDuration(mins) {
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
 }
+/** Estimated drop-off time, shown read-only next to Pick-up Time: pickup time + total route duration. */
+function addMinutesToTime(timeStr, mins) {
+  if (!timeStr || mins === null || mins === undefined) return null;
+  const [h, m] = timeStr.split(":").map(Number);
+  const total = ((h * 60 + m + mins) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
 /** Prototype stand-in for a real routing API: deterministic "distance" per
  * leg derived from location names, so the same route always estimates the
  * same numbers. Requires pickup + dropoff to both have a map location set. */
@@ -205,24 +212,24 @@ const SIGHTSEEING_SEED_TOURS = [
   { id: "#T0001A", reference: "#T0001A", tripName: "Autumn Foliage & Deer Paths", officeLocation: "Osaka", durationTier: "Half Day", status: "active", price: 60000, startTime: "09:00", viewedCount: 27, bookedCount: 3, serviceType: "Sightseeing Charter", airport: null,
     userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: { pickup: "Osaka Station", pickupTime: "09:00", pickupMapLocation: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" }, stopovers: [
-      { location: "Nara Park", waitTime: "90 min", mapLocation: { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" } },
-      { location: "Todai-ji Temple", waitTime: "60 min", mapLocation: { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" } },
+      { location: "Nara Park", waitTime: "01:30", mapLocation: { title: "Nara Park", address: "Nara, Nara Prefecture, Japan" } },
+      { location: "Todai-ji Temple", waitTime: "01:00", mapLocation: { title: "Tōdai-ji", address: "406-1 Zōshichō, Nara, Japan" } },
     ], dropoff: "Osaka Station", dropoffMapLocation: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" } },
     routeDistanceKm: 80.2, routeDurationMins: 330, tripDistanceKm: null, tripDurationMins: null,
     previewLinks: { tourDetails: "https://www.zengoride.com/tours/autumn-foliage-deer-paths", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/autumn-foliage-deer-paths/00001/2026-09-02" } },
   { id: "#T0002A", reference: "#T0002A", tripName: "Buddha by the Beach", officeLocation: "Tokyo", durationTier: "Half Day", status: "active", price: 50000, startTime: "09:00", viewedCount: 41, bookedCount: 7, serviceType: "Sightseeing Charter", airport: null,
     userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: { pickup: "Kamakura Station", pickupTime: "09:00", pickupMapLocation: { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" }, stopovers: [
-      { location: "Great Buddha (Daibutsu)", waitTime: "45 min", mapLocation: { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" } },
-      { location: "Yuigahama Beach", waitTime: "30 min", mapLocation: null },
+      { location: "Great Buddha (Daibutsu)", waitTime: "00:45", mapLocation: { title: "Great Buddha (Daibutsu)", address: "4 Chome-2-28 Hase, Kamakura, Kanagawa, Japan" } },
+      { location: "Yuigahama Beach", waitTime: "00:30", mapLocation: null },
     ], dropoff: "Kamakura Station", dropoffMapLocation: { title: "Kamakura Station", address: "1 Onari, Kamakura, Kanagawa, Japan" } },
     routeDistanceKm: 45.0, routeDurationMins: 300, tripDistanceKm: null, tripDurationMins: null,
     previewLinks: { tourDetails: "https://www.zengoride.com/tours/buddha-by-the-beach", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/buddha-by-the-beach/00002/2026-09-02" } },
   { id: "#T0003A", reference: "#T0003A", tripName: "Flavors of Edo", officeLocation: "Tokyo", durationTier: "Full Day", status: "inactive", price: 80000, startTime: "10:00", viewedCount: 12, bookedCount: 1, serviceType: "Sightseeing Charter", airport: null,
     userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null, driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
     waypoints: { pickup: "Tokyo Station", pickupTime: "10:00", pickupMapLocation: null, stopovers: [
-      { location: "Tsukiji Outer Market", waitTime: "60 min", mapLocation: null },
-      { location: "Asakusa Senso-ji", waitTime: "45 min", mapLocation: null },
+      { location: "Tsukiji Outer Market", waitTime: "01:00", mapLocation: null },
+      { location: "Asakusa Senso-ji", waitTime: "00:45", mapLocation: null },
     ], dropoff: "Shibuya Crossing", dropoffMapLocation: null },
     routeDistanceKm: 30.5, routeDurationMins: 600, tripDistanceKm: null, tripDurationMins: null,
     previewLinks: { tourDetails: "https://www.zengoride.com/tours/flavors-of-edo", tourBooking: "https://exert-hula-resilient.ngrok-free.dev/tours/flavors-of-edo/00003/2026-09-02" } },
@@ -315,6 +322,11 @@ function officeCounts(rows) {
   const counts = { Tokyo: 0, Osaka: 0, Nagoya: 0, Sapporo: 0 };
   rows.forEach((r) => (r.offices || []).forEach((o) => { if (o in counts) counts[o]++; }));
   return counts;
+}
+/* Owner is controlled per-vehicle-per-office in the Vehicle Lineup tab; other CMS tabs read it from there instead of storing their own copy. */
+function ownerForOffice(vehicleLineup, vehicleType, vehicleName, office) {
+  const entry = vehicleLineup.find((v) => v.vehicleType === vehicleType && v.vehicleName === vehicleName);
+  return entry?.ownerByOffice?.[office] ?? null;
 }
 const VEHICLE_TYPES = ["Commuter Van", "Premium Minivan", "Premium Van", "Crossover EV", "Luxury Sedan"];
 const VEHICLE_LINEUP_SEED = [
@@ -573,27 +585,21 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[480px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Type","Vehicle Name","Owner", isHalfDay ? "Half Day ¥" : "Full Day ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+              {["Vehicle Name","Owner", isHalfDay ? "Half Day ¥" : "Full Day ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
             </tr></thead>
             <tbody>
               {activeRows.map((row, i) => {
                 const invalid = row.custom && !row.customPrice.trim();
                 return (
                   <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
-                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
                     <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
                     <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
                     <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{isHalfDay ? row.halfDayPrice : row.fullDayPrice}</td>
-                    <td className="px-2 py-[9px]">
-                      <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
-                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
-                        {row.custom ? <>ON<span className="ml-1 h-4 w-4 rounded-full bg-white" /></> : <><span className="mr-1 h-4 w-4 rounded-full bg-white" />OFF</>}
-                      </button>
-                    </td>
+                    <td className="px-2 py-[9px]"><Toggle available={row.custom} onToggle={() => toggleCustom(i)} /></td>
                     <td className="px-2 py-[9px]">
                       {!row.custom ? <span className="text-gray-300">—</span> : (
                         <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
-                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
+                          className={`w-full min-w-[96px] rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
                       )}
                     </td>
                   </tr>
@@ -606,8 +612,10 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
     </div>
   );
 }
-function loadAirportRowsForOfficeAirport(office, airport) {
-  return AIRPORT_PRICE_SEED.filter((row) => (row.offices || []).includes(office) && row.available).flatMap((row) => {
+/* Live Pricing CMS › Airport Price rows, shared app-wide so Catalog templates always show the current CMS ranges. */
+const AirportPricingCtx = createContext({ airportRows: AIRPORT_PRICE_SEED, setAirportRows: () => {} });
+function loadAirportRowsForOfficeAirport(office, airport, sourceRows = AIRPORT_PRICE_SEED) {
+  return sourceRows.filter((row) => (row.offices || []).includes(office) && row.available).flatMap((row) => {
     const leg = row.legs.find((l) => l.airport === airport);
     if (!leg) return [];
     return [{ vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: leg.ranges?.[0]?.fixedFee ?? 0, ranges: leg.ranges ?? [], custom: false, customPrice: "" }];
@@ -617,9 +625,13 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
   const stale = pricing !== null && (pricing.office !== officeLocation || pricing.airport !== airport);
   const activeOffice = pricing?.office ?? officeLocation;
   const activeAirport = pricing?.airport ?? airport;
-  const activeRows = pricing?.rows ?? loadAirportRowsForOfficeAirport(officeLocation, airport);
+  const { airportRows: cmsAirportRows } = useContext(AirportPricingCtx);
+  /* Always render the live CMS vehicles + ranges; a saved template only contributes its Custom flags / prices. */
+  const liveRows = loadAirportRowsForOfficeAirport(activeOffice, activeAirport, cmsAirportRows);
+  const savedByKey = new Map((pricing?.rows ?? []).map((r) => [pricingRowKey(r), r]));
+  const activeRows = liveRows.map((row) => { const prev = savedByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
   const handleReload = () => {
-    const freshRows = loadAirportRowsForOfficeAirport(officeLocation, airport);
+    const freshRows = loadAirportRowsForOfficeAirport(officeLocation, airport, cmsAirportRows);
     const prevByKey = new Map(activeRows.map((r) => [pricingRowKey(r), r]));
     const rows = freshRows.map((row) => { const prev = prevByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
     onChange({ office: officeLocation, airport, rows });
@@ -629,7 +641,7 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
     rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(row.fixedFee) : "" };
     onChange({ office: activeOffice, airport: activeAirport, rows });
   };
-  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, airport: activeAirport, rows }); };
+  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value, custom: value.trim() !== "" }; onChange({ office: activeOffice, airport: activeAirport, rows }); };
   const overrideCount = activeRows.filter((r) => r.custom).length;
   const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
   return (
@@ -641,7 +653,7 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
       <div className="flex items-start justify-between gap-4 pr-9">
         <div>
           <p className="flex items-center gap-2 text-sm font-bold text-gray-800"><IconDollar size={16} className="text-gray-500" />Vehicle Pricing</p>
-          <p className="mt-1 text-xs text-gray-500">Airport category · {officeLocation} office · {airportDisplayName(airport)} · available vehicles only</p>
+          <p className="mt-1 text-xs text-gray-500">Airport category · {officeLocation} office · {airportDisplayName(airport)} · available vehicles only · synced with Pricing CMS › Airport Price</p>
         </div>
         {pricing && !locked && <button type="button" onClick={() => onChange(null)} className="h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-600 transition hover:bg-gray-50">Clear</button>}
       </div>
@@ -652,36 +664,27 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Type","Vehicle Name","Owner","Fixed Ranges","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+              {["Vehicle Name","Owner","Fixed Ranges","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
             </tr></thead>
             <tbody>
               {activeRows.map((row, i) => {
                 const invalid = row.custom && !row.customPrice.trim();
                 return (
                   <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
-                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
                     <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
                     <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
                     <td className="px-2 py-[9px] text-gray-600">
                       {row.ranges.length === 0 ? <span className="text-gray-300">—</span> : (
                         <div className="flex flex-wrap gap-1">
                           {row.ranges.map((r, ri) => (
-                            <span key={ri} className="whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">≤{r.radiusKm}km ¥{r.fixedFee.toLocaleString()}</span>
+                            <span key={ri} className="whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">{r.name || `Range ${ri + 1}`} · ≤{r.radiusKm}km · {formatPrice(r.fixedFee)}</span>
                           ))}
                         </div>
                       )}
                     </td>
                     <td className="px-2 py-[9px]">
-                      <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
-                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
-                        {row.custom ? <>ON<span className="ml-1 h-4 w-4 rounded-full bg-white" /></> : <><span className="mr-1 h-4 w-4 rounded-full bg-white" />OFF</>}
-                      </button>
-                    </td>
-                    <td className="px-2 py-[9px]">
-                      {!row.custom ? <span className="text-gray-300">—</span> : (
-                        <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
-                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
-                      )}
+                      <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={"Default"} title="Leave empty to use the default price"
+                        className={`w-full min-w-[96px] rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none placeholder:font-normal placeholder:text-gray-300 ${row.custom ? "border-[#FACC15] bg-yellow-50 text-gray-900" : "border-gray-200 bg-white text-gray-900"} ${locked ? "cursor-default" : "focus:border-gray-400"}`} />
                     </td>
                   </tr>
                 );
@@ -717,7 +720,7 @@ function FixedRouteVehiclePricingTable({ officeLocation, pricing, onChange, lock
     rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(row.fixedFee) : "" };
     onChange({ office: activeOffice, rows });
   };
-  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, rows }); };
+  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value, custom: value.trim() !== "" }; onChange({ office: activeOffice, rows }); };
   return (
     <div className="relative rounded-xl border border-gray-200 p-4">
       <div className="flex items-start justify-between gap-4">
@@ -734,28 +737,18 @@ function FixedRouteVehiclePricingTable({ officeLocation, pricing, onChange, lock
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[480px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Type","Vehicle Name","Owner","Fixed Fee ¥","Custom","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+              {["Vehicle Name","Owner","Custom Price ¥"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
             </tr></thead>
             <tbody>
               {activeRows.map((row, i) => {
                 const invalid = row.custom && !row.customPrice.trim();
                 return (
                   <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
-                    <td className="whitespace-nowrap px-2 py-[9px] text-gray-700">{row.vehicleType}</td>
                     <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
                     <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
-                    <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{row.fixedFee}</td>
                     <td className="px-2 py-[9px]">
-                      <button type="button" role="switch" aria-checked={row.custom} disabled={locked} onClick={() => toggleCustom(i)}
-                        className={`inline-flex h-[22px] items-center rounded-full text-[10px] font-extrabold tracking-wide disabled:cursor-default disabled:opacity-60 ${row.custom ? "justify-start bg-[#FACC15] pl-[9px] pr-1 text-[#121621]" : "justify-end bg-gray-300 pl-1 pr-[9px] text-gray-600"}`}>
-                        {row.custom ? <>ON<span className="ml-1 h-4 w-4 rounded-full bg-white" /></> : <><span className="mr-1 h-4 w-4 rounded-full bg-white" />OFF</>}
-                      </button>
-                    </td>
-                    <td className="px-2 py-[9px]">
-                      {!row.custom ? <span className="text-gray-300">—</span> : (
-                        <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
-                          className={`w-full rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-gray-200 bg-white text-gray-900 focus:border-gray-400"}`} />
-                      )}
+                      <input type="number" min="0" step="1000" readOnly={locked} value={row.customPrice} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder="Enter price" title="Leave empty to use the default price"
+                        className={`w-full min-w-[96px] rounded-lg border px-2 py-1.5 text-[13px] font-semibold tabular-nums outline-none placeholder:font-normal placeholder:text-gray-300 ${row.custom ? "border-[#FACC15] bg-yellow-50 text-gray-900" : "border-gray-200 bg-white text-gray-900"} ${locked ? "cursor-default" : "focus:border-gray-400"}`} />
                     </td>
                   </tr>
                 );
@@ -1501,7 +1494,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                       {draft.serviceType !== "Sightseeing Charter" ? <div aria-hidden="true" /> : (
                         <DebugField model="waypoints" field="pickup_time">
                           <div>
-                            <TTFieldLabel>Time</TTFieldLabel>
+                            <TTFieldLabel>Pick-up Time</TTFieldLabel>
                             <input type="time" value={wp.pickupTime} onChange={(e) => updateRouteCopy({ pickupTime: e.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
                           </div>
                         </DebugField>
@@ -1513,14 +1506,17 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                       <div key={i} className={`border-b p-3 ${EDIT_ROUTE_ROW_GRID}`} style={{ borderColor: "var(--border-soft)" }}>
                         <input type="text" value={stop.location} onChange={(e) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], location: e.target.value }; updateRouteCopy({ stopovers: arr }); }}
                           placeholder={`Stop ${i + 1} description`} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-                        <input type="text" value={stop.waitTime} onChange={(e) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], waitTime: e.target.value }; updateRouteCopy({ stopovers: arr }); }}
-                          placeholder="Wait time" aria-label={`Stop ${i + 1} wait time`} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                        <div>
+                          <TTFieldLabel>Standby Time</TTFieldLabel>
+                          <input type="time" value={stop.waitTime} onChange={(e) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], waitTime: e.target.value }; updateRouteCopy({ stopovers: arr }); }}
+                            aria-label={`Stop ${i + 1} wait time`} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                        </div>
                         <MapLocationPicker theme="light" size="compact" label={`Stopover ${i + 1}`} value={stop.mapLocation ?? null} onChange={(loc) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], mapLocation: loc }; updateRouteCopy({ stopovers: arr }); }} />
                         <button type="button" onClick={() => updateRouteCopy({ stopovers: wp.stopovers.filter((_, j) => j !== i) })} className="flex h-9 w-8 shrink-0 items-center justify-center rounded text-red-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><IconTrash size={16} /></button>
                       </div>
                     ))}
                     <div className="border-b p-3" style={{ borderColor: "var(--border-soft)" }}>
-                      <button type="button" onClick={() => updateRouteCopy({ stopovers: [...wp.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] })} className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 transition hover:text-violet-800">
+                      <button type="button" onClick={() => updateRouteCopy({ stopovers: [...wp.stopovers, { location: "", waitTime: "00:30", mapLocation: null }] })} className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 transition hover:text-violet-800">
                         <IconPlus size={16} />Add stopover
                       </button>
                     </div>
@@ -1531,7 +1527,12 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                           <input type="text" value={wp.dropoff} onChange={(e) => updateRouteCopy({ dropoff: e.target.value })} placeholder="Drop-off description" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
                         </div>
                       </DebugField>
-                      <div aria-hidden="true" className="hidden sm:block" />
+                      {draft.serviceType !== "Sightseeing Charter" ? <div aria-hidden="true" /> : (
+                        <div>
+                          <TTFieldLabel>Drop-off Time</TTFieldLabel>
+                          <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{addMinutesToTime(wp.pickupTime, draft.routeDurationMins) ?? "—"}</p>
+                        </div>
+                      )}
                       <MapLocationPicker theme="light" size="compact" label="Drop-off Spot" value={wp.dropoffMapLocation ?? null} onChange={(loc) => updateRouteCopy({ dropoffMapLocation: loc })} />
                       <div aria-hidden="true" className="hidden sm:block" />
                     </div>
@@ -1673,7 +1674,7 @@ const PRICING_TABS = ["Tour Charters", "Airport Price", "Customized Price", "Off
 function PricingCMSView() {
   const [activeTab, setActiveTab] = useState("Tour Charters");
   const [rows, setRows] = useState(SIGHTSEEING_PRICE_SEED);
-  const [airportRows, setAirportRows] = useState(AIRPORT_PRICE_SEED);
+  const { airportRows, setAirportRows } = useContext(AirportPricingCtx);
   const [customRows, setCustomRows] = useState(CUSTOMIZED_PRICE_SEED);
   const [officeFilter, setOfficeFilter] = useState("Tokyo");
   const [editingAirportRow, setEditingAirportRow] = useState(null);
@@ -1741,7 +1742,7 @@ function PricingCMSView() {
                 {filteredSightseeing.map((row) => (
                   <tr key={row.id} onClick={() => setEditingSightseeingRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, row.vehicleType, row.vehicleName, officeFilter) ?? row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(row.halfDayPrice)}</td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{formatPrice(row.fullDayPrice)}</td>
@@ -1752,7 +1753,7 @@ function PricingCMSView() {
             </table>
           </div>
           {editingSightseeingRow && (
-            <SightseeingPriceModal row={editingSightseeingRow} officeFilter={officeFilter} onClose={() => setEditingSightseeingRow(null)}
+            <SightseeingPriceModal row={editingSightseeingRow} officeFilter={officeFilter} vehicleLineup={vehicleLineup} onClose={() => setEditingSightseeingRow(null)}
               onSave={(u) => { setRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingSightseeingRow(null); }} />
           )}
         </>
@@ -1784,7 +1785,7 @@ function PricingCMSView() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{row.owner}</td>
+                    <td className="px-4 py-3 align-top" style={{ color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, row.vehicleType, row.vehicleName, officeFilter) ?? row.owner}</td>
                     <td className="px-4 py-3 align-top" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setAirportRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 align-top"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingAirportRow(row); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
                   </tr>
@@ -1794,7 +1795,7 @@ function PricingCMSView() {
             </table>
           </div>
           {editingAirportRow && (
-            <AirportPriceModal row={editingAirportRow} officeFilter={officeFilter} onClose={() => setEditingAirportRow(null)}
+            <AirportPriceModal row={editingAirportRow} officeFilter={officeFilter} vehicleLineup={vehicleLineup} onClose={() => setEditingAirportRow(null)}
               onSave={(u) => { setAirportRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingAirportRow(null); }} />
           )}
         </>
@@ -1810,7 +1811,7 @@ function PricingCMSView() {
                 {filteredCustom.map((row) => (
                   <tr key={row.id} onClick={() => setEditingCustomRow(row)} className="cursor-pointer border-b transition hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
-                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{row.owner}</td>
+                    <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, row.vehicleType, row.vehicleName, officeFilter) ?? row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setCustomRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.minDurationHrs)}</td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? formatPrice(row.unitPrice) : formatPrice(row.unit1to4)}</td>
@@ -1827,7 +1828,7 @@ function PricingCMSView() {
             </table>
           </div>
           {editingCustomRow && (
-            <CustomizedPriceModal row={editingCustomRow} officeFilter={officeFilter} onClose={() => setEditingCustomRow(null)}
+            <CustomizedPriceModal row={editingCustomRow} officeFilter={officeFilter} vehicleLineup={vehicleLineup} onClose={() => setEditingCustomRow(null)}
               onSave={(u) => { setCustomRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingCustomRow(null); }} />
           )}
         </>
@@ -1975,7 +1976,7 @@ function PricingCMSView() {
   );
 }
 
-function SightseeingPriceModal({ row, officeFilter, onClose, onSave }) {
+function SightseeingPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
   return (
@@ -1994,7 +1995,12 @@ function SightseeingPriceModal({ row, officeFilter, onClose, onSave }) {
           <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set by the office filter above.</span>
         </div>
       </Field>
-      <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
+      <Field label="Owner">
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, draft.vehicleType, draft.vehicleName, officeFilter) ?? draft.owner}</span>
+          <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set in the Vehicle Lineup tab.</span>
+        </div>
+      </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Half Day ¥"><input type="number" min="0" value={draft.halfDayPrice} onChange={(e) => patch({ halfDayPrice: parseInt(e.target.value,10)||0 })} className={fieldBox} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
@@ -2091,7 +2097,7 @@ function RangeEditorModal({ airport, range, onSave, onDelete, onClose }) {
     </div>
   );
 }
-function AirportPriceModal({ row, officeFilter, onClose, onSave }) {
+function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const [editingRange, setEditingRange] = useState(null);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
@@ -2128,7 +2134,12 @@ function AirportPriceModal({ row, officeFilter, onClose, onSave }) {
         <Field label="Vehicle Type"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleType}</p></Field>
         <Field label="Vehicle Name"><p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>{draft.vehicleName}</p></Field>
       </div>
-      <Field label="Owner"><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></Field>
+      <Field label="Owner">
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, draft.vehicleType, draft.vehicleName, officeFilter) ?? draft.owner}</span>
+          <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set in the Vehicle Lineup tab.</span>
+        </div>
+      </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
       {draft.legs.filter((l) => availableAirports.includes(l.airport)).length > 0 && (
         <Field label="Pricing Map">
@@ -2180,7 +2191,7 @@ function AirportPriceModal({ row, officeFilter, onClose, onSave }) {
   );
 }
 
-function CustomizedPriceModal({ row, officeFilter, onClose, onSave }) {
+function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
@@ -2201,7 +2212,12 @@ function CustomizedPriceModal({ row, officeFilter, onClose, onSave }) {
           <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set by the office filter above.</span>
         </div>
       </Field>
-      <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Owner</p><ChipGroup options={["Self","Partner"]} value={draft.owner} onChange={(o) => patch({ owner: o })} /></div>
+      <Field label="Owner">
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, draft.vehicleType, draft.vehicleName, officeFilter) ?? draft.owner}</span>
+          <span className="text-xs" style={{ color: "var(--text-3)" }}>Read-only — set in the Vehicle Lineup tab.</span>
+        </div>
+      </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
       <Field label="Min. Fare (hrs)"><input type="text" inputMode="numeric" value={draft.minDurationHrs ?? ""} onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })} placeholder="0" className={`${num} max-w-[110px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
       <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border-soft)" }}><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Tiered Pricing</p><Toggle available={draft.tieredPricing !== false} onToggle={() => patch({ tieredPricing: !(draft.tieredPricing !== false) })} /></div>
@@ -2333,6 +2349,8 @@ const AUTUMN_FOLIAGE_DEMO_ITINERARY = {
 };
 function parseWaitMins(waitTime) {
   if (!waitTime || waitTime.toLowerCase() === "none") return 0;
+  const hhmm = waitTime.match(/^(\d{1,2}):(\d{2})$/);
+  if (hhmm) return parseInt(hhmm[1], 10) * 60 + parseInt(hhmm[2], 10);
   const hourMatch = waitTime.match(/(\d+)\s*h/i);
   const minMatch = waitTime.match(/(\d+)\s*min/i);
   return (hourMatch ? parseInt(hourMatch[1], 10) * 60 : 0) + (minMatch ? parseInt(minMatch[1], 10) : 0);
@@ -3191,6 +3209,8 @@ function AdminShell() {
   const [modalTour, setModalTour] = useState(null);
   const [isNewTour, setIsNewTour] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [airportRows, setAirportRows] = useState(AIRPORT_PRICE_SEED);
+  const airportPricingValue = useMemo(() => ({ airportRows, setAirportRows }), [airportRows]);
   const [bookingPreviewTour, setBookingPreviewTour] = useState(null);
   const bookingItinerary = useMemo(() => (bookingPreviewTour ? buildItineraryFromTour(bookingPreviewTour) : null), [bookingPreviewTour]);
   const openBooking = useCallback((tour) => setBookingPreviewTour(tour), []);
@@ -3217,6 +3237,7 @@ function AdminShell() {
 
   return (
     <DebugCtx.Provider value={{ debugMode, toggle: () => setDebugMode((v) => !v) }}>
+      <AirportPricingCtx.Provider value={airportPricingValue}>
       <div className="min-h-screen" style={{ background: "var(--bg-app)" }}>
         <Sidebar activeView={activeView} onNavigate={setActiveView} systemView={systemView} onSystemChange={setSystemView} />
         <main className="ml-56 min-h-screen p-8">
@@ -3239,11 +3260,13 @@ function AdminShell() {
           <ItineraryPlanner itinerary={bookingItinerary} sequence={bookingPreviewTour.id.replace(/[^0-9]/g, "").padStart(4, "0").slice(-4) || "0001"} onClose={() => setBookingPreviewTour(null)} />
         )}
       </div>
+      </AirportPricingCtx.Provider>
     </DebugCtx.Provider>
   );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<AdminShell />);
 </script>
+
 
 </body></html>
