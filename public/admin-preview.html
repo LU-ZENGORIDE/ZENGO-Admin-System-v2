@@ -2879,7 +2879,14 @@ function MiniDatePicker({ icon: PickerIcon, label, value, onChange }) {
     </div>
   );
 }
-function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
+const timeToMins = (t) => { const m = t && t.match(/^(\d{2}):(\d{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+const minsToTime = (n) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+/* minTime/maxTime (HH:MM, optional) limit what can be picked or typed; out-of-range input is clamped. */
+function MiniTimePicker({ icon: PickerIcon, label, value, onChange, minTime, maxTime }) {
+  const minM = timeToMins(minTime) ?? 0;
+  const maxM = timeToMins(maxTime) ?? 1439;
+  const hasRange = minTime != null || maxTime != null;
+  const emitMins = (n) => onChange(minsToTime(Math.min(maxM, Math.max(minM, n))));
   const [open, setOpen] = useState(false);
   const [activeSeg, setActiveSeg] = useState(null);
   const ref = useRef(null);
@@ -2901,8 +2908,11 @@ function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
   }, [open, activeSeg, parts]);
   useEffect(() => { if (activeSeg) segRefs.current[activeSeg]?.focus(); }, [activeSeg]);
 
-  const hourOptions = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
+  const hourOptions = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).filter((h) => Number(h) * 60 + 59 >= minM && Number(h) * 60 <= maxM);
   const minuteOptions = ["00", "15", "30", "45"];
+  const curHour = value ? Number(value.slice(0, 2)) : Math.floor(minM / 60);
+  const curMin = value ? Number(value.slice(3, 5)) : 0;
+  const minuteInRange = (m) => { const n = curHour * 60 + Number(m); return n >= minM && n <= maxM; };
   const nextSegOf = (seg) => SEG_ORDER[SEG_ORDER.indexOf(seg) + 1] || null;
   const prevSegOf = (seg) => SEG_ORDER[SEG_ORDER.indexOf(seg) - 1] || null;
 
@@ -2910,7 +2920,7 @@ function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
     if (!p.hh && !p.mm) return;
     const hh = Math.min(23, parseInt(p.hh, 10) || 0);
     const mm = Math.min(59, parseInt(p.mm, 10) || 0);
-    onChange(`${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
+    emitMins(hh * 60 + mm);
   };
 
   const openSegment = (seg, e) => { e.stopPropagation(); setOpen(false); setActiveSeg(seg); };
@@ -2967,13 +2977,15 @@ function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
         </div>
       </div>
       {open && (
-        <div className="absolute left-1/2 top-full z-30 mt-2 flex w-36 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+        <div className="absolute left-1/2 top-full z-30 mt-2 w-40 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          {hasRange && <p className="border-b border-gray-100 px-2 py-1.5 text-center text-[10px] font-semibold text-gray-400">Available {minsToTime(minM)} – {minsToTime(maxM)}</p>}
+          <div className="flex">
           <div className="max-h-72 flex-1 overflow-y-auto border-r border-gray-100 p-1.5">
             {hourOptions.map((h) => {
               const active = value && value.slice(0, 2) === h;
               return (
                 <button key={h} type="button"
-                  onClick={() => onChange(`${h}:${value ? value.slice(3, 5) : "00"}`)}
+                  onClick={() => emitMins(Number(h) * 60 + curMin)}
                   className={`block w-full rounded-lg px-2 py-1.5 text-center text-xs font-medium transition ${active ? "text-white" : "text-gray-700 hover:bg-gray-100"}`}
                   style={active ? { background: ZG_GRADIENT } : undefined}>
                   {h}
@@ -2984,15 +2996,17 @@ function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
           <div className="max-h-72 flex-1 overflow-y-auto p-1.5">
             {minuteOptions.map((m) => {
               const active = value && value.slice(3, 5) === m;
+              const allowed = minuteInRange(m);
               return (
-                <button key={m} type="button"
-                  onClick={() => { onChange(`${value ? value.slice(0, 2) : "00"}:${m}`); setOpen(false); }}
-                  className={`block w-full rounded-lg px-2 py-1.5 text-center text-xs font-medium transition ${active ? "text-white" : "text-gray-700 hover:bg-gray-100"}`}
+                <button key={m} type="button" disabled={!allowed}
+                  onClick={() => { emitMins(curHour * 60 + Number(m)); setOpen(false); }}
+                  className={`block w-full rounded-lg px-2 py-1.5 text-center text-xs font-medium transition ${active ? "text-white" : allowed ? "text-gray-700 hover:bg-gray-100" : "cursor-not-allowed text-gray-300"}`}
                   style={active ? { background: ZG_GRADIENT } : undefined}>
                   {m}
                 </button>
               );
             })}
+          </div>
           </div>
         </div>
       )}
@@ -3250,7 +3264,11 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
         <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3.5 shadow-sm">
           <div className="flex min-w-0 flex-1 flex-wrap gap-3">
             <MiniDatePicker icon={IconCalendarClock} label="Date" value={scheduledDate} onChange={setScheduledDate} />
-            <MiniTimePicker icon={IconClock} label="Pick-up Time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })} />
+            <MiniTimePicker icon={IconClock} label="Pick-up Time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })}
+              {...(mode === "charter" && timeToMins(tour.waypoints.pickupTime) != null ? {
+                minTime: minsToTime(Math.max(0, timeToMins(tour.waypoints.pickupTime) - 60)),
+                maxTime: minsToTime(Math.min(1439, timeToMins(tour.waypoints.pickupTime) + 60)),
+              } : {})} />
           </div>
         </div>
 
