@@ -3009,35 +3009,14 @@ function AirportDirectionPicker({ value, onChange }) {
   );
 }
 function AirportSelect({ value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const airports = Object.keys(AIRPORT_CODES);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
   return (
-    <div className="relative min-w-0 flex-1" ref={ref} onClick={(e) => e.stopPropagation()}>
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-left transition hover:bg-gray-100">
-        <span className={`min-w-0 flex-1 truncate text-[15px] ${value ? "font-bold text-gray-900" : "font-medium text-gray-400"}`}>
-          {value ? airportDisplayName(value) : "Please select an airport"}
-        </span>
-        <IconChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-xl">
-          {airports.map((a) => (
-            <button key={a} type="button" onClick={() => { onChange(a); setOpen(false); }}
-              className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${a === value ? "bg-orange-50 font-semibold text-orange-700" : "text-gray-700 hover:bg-gray-50"}`}>
-              <span className="truncate">{airportDisplayName(a)}</span>
-              {a === value && <IconCheck size={14} className="shrink-0" />}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="relative min-w-0 flex-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}
+        className={`w-full cursor-pointer appearance-none truncate rounded-xl bg-gray-50 py-2 pl-3 pr-8 text-[15px] outline-none transition hover:bg-gray-100 focus:ring-2 focus:ring-orange-200 ${value ? "font-bold text-gray-900" : "font-medium text-gray-400"}`}>
+        <option value="" disabled>Please select an airport</option>
+        {Object.keys(AIRPORT_CODES).map((a) => <option key={a} value={a} className="font-normal text-gray-900">{airportDisplayName(a)}</option>)}
+      </select>
+      <IconChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
     </div>
   );
 }
@@ -3201,8 +3180,8 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
             </div>
             {rows.map((row, i) => {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
-              /* An airport end spot has nothing to edit here (the airport is chosen above), so it doesn't expand. */
-              const expandable = !(row.key === "dropoff" && direction === "to");
+              /* The end spot is edited inline (airport dropdown or location modal), so it has no expand panel. */
+              const expandable = row.key !== "dropoff";
               const airportRow = (row.key === "pickup" && direction === "from") || (row.key === "dropoff" && direction === "to");
               const isOpen = expandable && expanded === row.key;
               const isStop = row.key.startsWith("stop-");
@@ -3227,13 +3206,14 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
-                      ) : !isStop && !row.name ? (
+                      ) : !isStop ? (
                         <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                          <MapLocationPicker theme="light" size="field" label={row.label} placeholder="Please input a location." value={row.mapLocation ?? null}
+                          <MapLocationPicker theme="light" size="field" label={row.label} placeholder="Please input a location."
+                            value={row.mapLocation ?? (row.name ? { title: row.name, address: "" } : null)}
                             onChange={(loc) => patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc } : { dropoff: loc.title, dropoffMapLocation: loc })} />
                         </div>
                       ) : (
-                        <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name}</span>
+                        <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name || "Not set"}</span>
                       )}
                       {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${alignIndent}`}>{row.meta}</span>}
                     </div>
@@ -3250,22 +3230,6 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                         <MapLocationPicker theme="light" size="field" label={row.label} value={row.mapLocation}
                           onChange={(loc) => patchStop(stopIndex, { location: loc.title, mapLocation: loc })} />
                       </div>
-                      )}
-                      {row.key === "pickup" && direction === "to" && (
-                        <div>
-                          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
-                          <input type="text" value={draftWaypoints.pickup} onChange={(e) => patch({ pickup: e.target.value })}
-                            placeholder="Please input your location"
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
-                        </div>
-                      )}
-                      {row.key === "dropoff" && direction === "from" && (
-                        <div>
-                          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
-                          <input type="text" value={draftWaypoints.dropoff} onChange={(e) => patch({ dropoff: e.target.value })}
-                            placeholder="Please input your location"
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
-                        </div>
                       )}
                       {row.key === "pickup" && (
                         <div className="max-w-[220px]">
