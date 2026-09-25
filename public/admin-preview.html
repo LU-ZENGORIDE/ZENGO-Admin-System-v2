@@ -3482,7 +3482,8 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
               /* Start/end are edited inline (airport dropdown or location modal) and the pick-up time only via the
                * top Pick-up Time picker, so only stopovers expand. */
-              const expandable = row.key.startsWith("stop-");
+              /* Charter stopovers are fixed by the product (location and standby time can't be changed). */
+              const expandable = row.key.startsWith("stop-") && mode !== "charter";
               const airportRow = (row.key === "pickup" && direction === "from") || (row.key === "dropoff" && direction === "to");
               const isOpen = expandable && expanded === row.key;
               const isStop = row.key.startsWith("stop-");
