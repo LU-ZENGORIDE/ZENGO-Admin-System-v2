@@ -3180,8 +3180,9 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
             </div>
             {rows.map((row, i) => {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
-              /* The end spot is edited inline (airport dropdown or location modal), so it has no expand panel. */
-              const expandable = row.key !== "dropoff";
+              /* Start/end are edited inline (airport dropdown or location modal) and the pick-up time only via the
+               * top Pick-up Time picker, so only stopovers expand. */
+              const expandable = row.key.startsWith("stop-");
               const airportRow = (row.key === "pickup" && direction === "from") || (row.key === "dropoff" && direction === "to");
               const isOpen = expandable && expanded === row.key;
               const isStop = row.key.startsWith("stop-");
@@ -3230,11 +3231,6 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                         <MapLocationPicker theme="light" size="field" label={row.label} value={row.mapLocation}
                           onChange={(loc) => patchStop(stopIndex, { location: loc.title, mapLocation: loc })} />
                       </div>
-                      )}
-                      {row.key === "pickup" && (
-                        <div className="max-w-[220px]">
-                          <MiniTimePicker icon={IconClock} label="Pick-up Time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })} />
-                        </div>
                       )}
                       {isStop && (
                         <div className="flex items-end gap-3">
