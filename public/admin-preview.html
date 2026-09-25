@@ -1242,10 +1242,12 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
   const linkFieldClass = "w-full rounded-lg border px-3 py-2 text-xs font-medium outline-none";
   const linkFieldStyle = locked ? { borderColor: "rgba(139,92,246,.25)", background: "rgba(139,92,246,.05)", color: "rgba(139,92,246,.6)" } : { borderColor: "rgba(139,92,246,.4)", background: "rgba(139,92,246,.08)", color: "#7c3aed" };
 
+  const showRouteTimes = draft.serviceType === "Sightseeing Charter";
+  const previewDropoffTime = addMinutesToTime(draft.waypoints.pickupTime, draft.routeDurationMins);
   const routeRows = [
-    { badge: "Pick-up", tone: "green", name: draft.waypoints.pickup, meta: draft.serviceType === "Sightseeing Charter" ? draft.waypoints.pickupTime : "", pin: draft.waypoints.pickupMapLocation },
+    { badge: "Pick-up", tone: "green", name: draft.waypoints.pickup, meta: showRouteTimes ? `Pick-up Time ${draft.waypoints.pickupTime || "—"}` : "", pin: draft.waypoints.pickupMapLocation },
     ...draft.waypoints.stopovers.map((s, i) => ({ badge: `Stop ${i + 1}`, tone: "plain", name: s.location, meta: s.waitTime, pin: s.mapLocation })),
-    { badge: "Drop-off", tone: "red", name: draft.waypoints.dropoff, meta: "", pin: draft.waypoints.dropoffMapLocation },
+    { badge: "Drop-off", tone: "red", name: draft.waypoints.dropoff, meta: showRouteTimes ? `Drop-off Time ${previewDropoffTime ?? "—"}` : "", pin: draft.waypoints.dropoffMapLocation },
   ];
 
   return (
