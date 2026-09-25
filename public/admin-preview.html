@@ -3019,11 +3019,11 @@ function AirportSelect({ value, onChange }) {
     </div>
   );
 }
-function itinRowsFromWaypoints(wp, direction) {
+function itinRowsFromWaypoints(wp, direction, dropoffTime) {
   return [
-    { key: "pickup", label: "Start Spot", name: direction ? wp.pickup : "", meta: direction === "from" && wp.pickupTime ? `Departs ${wp.pickupTime}` : "", mapLocation: wp.pickupMapLocation, icon: IconPlane },
+    { key: "pickup", label: "Start Spot", name: direction ? wp.pickup : "", meta: `Pick-up Time ${wp.pickupTime || "—"}`, mapLocation: wp.pickupMapLocation, icon: IconPlane },
     ...wp.stopovers.map((s, i) => ({ key: `stop-${i}`, label: `Stop ${i + 1}`, name: s.location, meta: s.waitTime ? `Standby ${s.waitTime}` : "", mapLocation: s.mapLocation, icon: IconMapPin })),
-    { key: "dropoff", label: "End Spot", name: direction ? wp.dropoff : "", meta: direction === "to" ? "Final destination" : "", mapLocation: wp.dropoffMapLocation, icon: IconFlag },
+    { key: "dropoff", label: "End Spot", name: direction ? wp.dropoff : "", meta: `Drop-off Time ${dropoffTime ?? "—"}`, mapLocation: wp.dropoffMapLocation, icon: IconFlag },
   ];
 }
 function ItinItineraryMap({ rows, zoom }) {
@@ -3108,8 +3108,8 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
   const addStop = () => setDraftWaypoints((prev) => ({ ...prev, stopovers: [...prev.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] }));
   const removeStop = (i) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.filter((_, j) => j !== i) }));
 
-  const rows = itinRowsFromWaypoints(draftWaypoints, direction);
   const liveMetrics = estimateRouteMetrics(draftWaypoints);
+  const rows = itinRowsFromWaypoints(draftWaypoints, direction, addMinutesToTime(draftWaypoints.pickupTime, liveMetrics?.durationMins ?? tour.routeDurationMins));
   const dirty = JSON.stringify(draftWaypoints) !== JSON.stringify(tour.waypoints);
 
   const handleSave = () => {
@@ -3193,15 +3193,15 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                     className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition sm:gap-4 sm:px-5 ${expandable ? "cursor-pointer hover:bg-gray-50/80" : ""}`}>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"><row.icon size={16} /></span>
-                    {airportRow ? (
-                      <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
-                        onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
-                    ) : (
-                      <span className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      {airportRow ? (
+                        <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
+                          onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
+                      ) : (
                         <span className="block truncate text-[15px] font-bold text-gray-900">{row.name || "Not set"}</span>
-                        {row.meta && <span className="block truncate text-[13px] text-gray-500">{row.meta}</span>}
-                      </span>
-                    )}
+                      )}
+                      {row.meta && <span className="block truncate text-[13px] text-gray-500">{row.meta}</span>}
+                    </div>
                     <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold sm:inline-flex" style={{ color }}>
                       {row.label}
                     </span>
