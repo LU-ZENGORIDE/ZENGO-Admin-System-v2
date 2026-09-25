@@ -2971,68 +2971,57 @@ function MiniTimePicker({ icon: PickerIcon, label, value, onChange }) {
     </div>
   );
 }
-function AirportDirectionPicker({ fromValue, toValue, onChangeFrom, onChangeTo, onSwitchDir }) {
-  const [activeDir, setActiveDir] = useState(null);
+function AirportDirectionPicker({ value, onChange }) {
+  return (
+    <div className="flex w-full gap-1.5 rounded-full border border-gray-200 bg-white p-1.5 text-sm font-semibold">
+      {["from", "to"].map((dir) => (
+        <button key={dir} type="button" onClick={() => value !== dir && onChange(dir)}
+          className={`flex-1 rounded-full py-2 text-center transition-colors ${value === dir ? "text-white" : "text-gray-400 hover:text-gray-600"}`}
+          style={value === dir ? { background: ZG_GRADIENT } : undefined}>
+          {dir === "from" ? "From Airport" : "To Airport"}
+        </button>
+      ))}
+    </div>
+  );
+}
+function AirportSelect({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const airports = Object.keys(AIRPORT_CODES);
-  const value = activeDir === "from" ? fromValue : activeDir === "to" ? toValue : null;
-  const onChange = activeDir === "from" ? onChangeFrom : onChangeTo;
-  /* Follow external direction changes (e.g. the itinerary's reverse button swapping from/to). */
-  useEffect(() => {
-    if (fromValue && !toValue) setActiveDir("from");
-    else if (toValue && !fromValue) setActiveDir("to");
-  }, [fromValue, toValue]);
-
   useEffect(() => {
     if (!open) return;
     const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
-
   return (
-    <div className="w-full" ref={ref}>
-      <div className="flex gap-1.5 rounded-full border border-gray-200 bg-white p-1.5 text-sm font-semibold">
-        {["from", "to"].map((dir) => (
-          <button key={dir} type="button" onClick={() => { const changed = activeDir !== dir; setActiveDir(dir); setOpen(true); if (changed) onSwitchDir && onSwitchDir(dir); }}
-            className={`flex-1 rounded-full py-2 text-center transition-colors ${activeDir === dir ? "text-white" : "text-gray-400 hover:text-gray-600"}`}
-            style={activeDir === dir ? { background: ZG_GRADIENT } : undefined}>
-            {dir === "from" ? "From Airport" : "To Airport"}
-          </button>
-        ))}
-      </div>
-      {activeDir && (
-      <div className="relative mt-2">
-        <button type="button" onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center gap-2.5 rounded-xl bg-gray-50 px-3.5 py-2.5 text-left transition hover:bg-gray-100">
-          <IconPlane size={16} className="shrink-0 text-black" />
-          <span className={`min-w-0 flex-1 truncate text-sm font-medium ${value ? "text-gray-900" : "text-gray-400"}`}>
-            {value ? airportDisplayName(value) : "Please select an airport"}
-          </span>
-          <IconChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-        {open && (
-          <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-xl">
-            {airports.map((a) => (
-              <button key={a} type="button" onClick={() => { onChange(a); setOpen(false); }}
-                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${a === value ? "bg-orange-50 font-semibold text-orange-700" : "text-gray-700 hover:bg-gray-50"}`}>
-                <span className="truncate">{airportDisplayName(a)}</span>
-                {a === value && <IconCheck size={14} className="shrink-0" />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="relative min-w-0 flex-1" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-left transition hover:bg-gray-100">
+        <span className={`min-w-0 flex-1 truncate text-[15px] ${value ? "font-bold text-gray-900" : "font-medium text-gray-400"}`}>
+          {value ? airportDisplayName(value) : "Please select an airport"}
+        </span>
+        <IconChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-xl">
+          {airports.map((a) => (
+            <button key={a} type="button" onClick={() => { onChange(a); setOpen(false); }}
+              className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${a === value ? "bg-orange-50 font-semibold text-orange-700" : "text-gray-700 hover:bg-gray-50"}`}>
+              <span className="truncate">{airportDisplayName(a)}</span>
+              {a === value && <IconCheck size={14} className="shrink-0" />}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
 }
-function itinRowsFromWaypoints(wp, fromAirport, toAirport) {
+function itinRowsFromWaypoints(wp, direction) {
   return [
-    { key: "pickup", label: "Start Spot", name: (fromAirport || toAirport) ? wp.pickup : "", meta: fromAirport && wp.pickupTime ? `Departs ${wp.pickupTime}` : "", mapLocation: wp.pickupMapLocation, icon: IconPlane },
+    { key: "pickup", label: "Start Spot", name: direction ? wp.pickup : "", meta: direction === "from" && wp.pickupTime ? `Departs ${wp.pickupTime}` : "", mapLocation: wp.pickupMapLocation, icon: IconPlane },
     ...wp.stopovers.map((s, i) => ({ key: `stop-${i}`, label: `Stop ${i + 1}`, name: s.location, meta: s.waitTime ? `Standby ${s.waitTime}` : "", mapLocation: s.mapLocation, icon: IconMapPin })),
-    { key: "dropoff", label: "End Spot", name: (fromAirport || toAirport) ? wp.dropoff : "", meta: toAirport ? "Final destination" : "", mapLocation: wp.dropoffMapLocation, icon: IconFlag },
+    { key: "dropoff", label: "End Spot", name: direction ? wp.dropoff : "", meta: direction === "to" ? "Final destination" : "", mapLocation: wp.dropoffMapLocation, icon: IconFlag },
   ];
 }
 function ItinItineraryMap({ rows, zoom }) {
@@ -3073,12 +3062,14 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
   const [scheduledDate, setScheduledDate] = useState("");
   const [fromAirport, setFromAirport] = useState(null);
   const [toAirport, setToAirport] = useState(null);
+  const [direction, setDirection] = useState(null);
 
   useEffect(() => {
     setDraftWaypoints(tour ? structuredClone(tour.waypoints) : null);
     setExpanded(null);
     setFromAirport(null);
     setToAirport(null);
+    setDirection(null);
   }, [tour?.id]);
 
   if (!tour || !draftWaypoints) {
@@ -3100,6 +3091,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
     patch({ dropoff: airportDisplayName(airport), dropoffMapLocation: AIRPORT_MAP_LOCATIONS[airport] ?? null });
   };
   const handleSwitchAirportDir = (dir) => {
+    setDirection(dir);
     if (dir === "from") { setToAirport(null); patch({ dropoff: "", dropoffMapLocation: null }); }
     if (dir === "to") { setFromAirport(null); patch({ pickup: "", pickupMapLocation: null }); }
   };
@@ -3107,13 +3099,14 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
     setDraftWaypoints((prev) => ({ ...prev, pickup: prev.dropoff, pickupMapLocation: prev.dropoffMapLocation ?? null, dropoff: prev.pickup, dropoffMapLocation: prev.pickupMapLocation ?? null, stopovers: [...prev.stopovers].reverse() }));
     setFromAirport(toAirport);
     setToAirport(fromAirport);
+    setDirection((d) => (d === "from" ? "to" : d === "to" ? "from" : d));
     setExpanded(null);
   };
   const patchStop = (i, p) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
   const addStop = () => setDraftWaypoints((prev) => ({ ...prev, stopovers: [...prev.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] }));
   const removeStop = (i) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.filter((_, j) => j !== i) }));
 
-  const rows = itinRowsFromWaypoints(draftWaypoints, fromAirport, toAirport);
+  const rows = itinRowsFromWaypoints(draftWaypoints, direction);
   const liveMetrics = estimateRouteMetrics(draftWaypoints);
   const dirty = JSON.stringify(draftWaypoints) !== JSON.stringify(tour.waypoints);
 
@@ -3168,7 +3161,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
         </div>
 
         <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm">
-          <AirportDirectionPicker fromValue={fromAirport} toValue={toAirport} onChangeFrom={handleFromAirportChange} onChangeTo={handleToAirportChange} onSwitchDir={handleSwitchAirportDir} />
+          <AirportDirectionPicker value={direction} onChange={handleSwitchAirportDir} />
         </div>
         {savedFlash && <p className="mt-2 text-xs font-semibold text-emerald-700">Saved — Catalog updated.</p>}
 
@@ -3185,24 +3178,33 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
             {rows.map((row, i) => {
               const color = ITIN_PALETTE[i % ITIN_PALETTE.length];
               /* An airport end spot has nothing to edit here (the airport is chosen above), so it doesn't expand. */
-              const expandable = !(row.key === "dropoff" && toAirport);
+              const expandable = !(row.key === "dropoff" && direction === "to");
+              const airportRow = (row.key === "pickup" && direction === "from") || (row.key === "dropoff" && direction === "to");
               const isOpen = expandable && expanded === row.key;
               const isStop = row.key.startsWith("stop-");
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
                 <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
-                  <button type="button" disabled={!expandable} onClick={() => setExpanded(isOpen ? null : row.key)} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition sm:gap-4 sm:px-5 ${expandable ? "hover:bg-gray-50/80" : "cursor-default"}`}>
+                  <div role={expandable ? "button" : undefined} tabIndex={expandable ? 0 : undefined}
+                    onClick={() => expandable && setExpanded(isOpen ? null : row.key)}
+                    onKeyDown={(e) => { if (expandable && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); setExpanded(isOpen ? null : row.key); } }}
+                    className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition sm:gap-4 sm:px-5 ${expandable ? "cursor-pointer hover:bg-gray-50/80" : ""}`}>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"><row.icon size={16} /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-bold text-gray-900">{row.name || "Not set"}</span>
-                      {row.meta && <span className="block truncate text-[13px] text-gray-500">{row.meta}</span>}
-                    </span>
+                    {airportRow ? (
+                      <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
+                        onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
+                    ) : (
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-bold text-gray-900">{row.name || "Not set"}</span>
+                        {row.meta && <span className="block truncate text-[13px] text-gray-500">{row.meta}</span>}
+                      </span>
+                    )}
                     <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold sm:inline-flex" style={{ color }}>
                       {row.label}
                     </span>
                     {expandable ? <IconChevronRight size={16} className={`shrink-0 text-gray-300 transition-transform ${isOpen ? "rotate-90" : ""}`} /> : <span className="w-4 shrink-0" aria-hidden="true" />}
-                  </button>
+                  </div>
                   {isOpen && (
                     <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-4 py-4 sm:px-5">
                       {isStop && (
@@ -3212,7 +3214,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                           onChange={(loc) => patchStop(stopIndex, { location: loc.title, mapLocation: loc })} />
                       </div>
                       )}
-                      {row.key === "pickup" && !fromAirport && toAirport && (
+                      {row.key === "pickup" && direction === "to" && (
                         <div>
                           <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
                           <input type="text" value={draftWaypoints.pickup} onChange={(e) => patch({ pickup: e.target.value })}
@@ -3220,7 +3222,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
                         </div>
                       )}
-                      {row.key === "dropoff" && !toAirport && fromAirport && (
+                      {row.key === "dropoff" && direction === "from" && (
                         <div>
                           <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Location</label>
                           <input type="text" value={draftWaypoints.dropoff} onChange={(e) => patch({ dropoff: e.target.value })}
