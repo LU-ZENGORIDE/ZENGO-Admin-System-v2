@@ -3132,25 +3132,29 @@ function ItineraryEditorView({ tours }) {
     setTimeout(() => setSavedFlash(false), 1800);
   };
 
+  const tabBar = (
+    <div className="mx-[10%] mt-5 flex justify-center overflow-x-auto">
+      <div role="tablist" className="inline-flex gap-1.5 rounded-full border border-white/60 bg-white/60 p-1.5 shadow-sm backdrop-blur">
+        {ITIN_EDITOR_TABS.map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={itinTab === t} onClick={() => setItinTab(t)}
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:px-5 ${itinTab === t ? "text-white shadow" : "hover:bg-white/70"}`}
+            style={itinTab === t ? { background: ZG_GRADIENT } : { color: "rgba(59,30,14,0.55)" }}>
+            {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="-m-8 min-h-screen py-6 sm:py-8" style={{ background: "linear-gradient(135deg, #FFF8F0 0%, #FDF0E4 45%, #EFF6FF 100%)", fontFamily: "'Wix Madefor Display', 'Inter', sans-serif" }}>
-      <div className="mx-[10%] mb-5 overflow-x-auto">
-        <div role="tablist" className="inline-flex min-w-full gap-1.5 rounded-full border border-white/60 bg-white/60 p-1.5 shadow-sm backdrop-blur sm:min-w-0">
-          {ITIN_EDITOR_TABS.map((t) => (
-            <button key={t} type="button" role="tab" aria-selected={itinTab === t} onClick={() => setItinTab(t)}
-              className={`flex-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:flex-none sm:px-5 ${itinTab === t ? "text-white shadow" : "hover:bg-white/70"}`}
-              style={itinTab === t ? { background: ZG_GRADIENT } : { color: "rgba(59,30,14,0.55)" }}>
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-      {itinTab !== "Airport Transfer" ? (
-        <div className="mx-[10%] flex min-h-[50vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+      {itinTab !== "Airport Transfer" ? (<>
+        {tabBar}
+        <div className="mx-[10%] mt-3 flex min-h-[50vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
           <h1 className="text-[30px] font-extrabold tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{itinTab}</h1>
           <p className="mt-2 text-sm" style={{ color: "rgba(59,30,14,0.5)" }}>The {itinTab} itinerary editor is coming soon.</p>
         </div>
-      ) : (<>
+      </>) : (<>
       <div className="mx-[10%] flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgba(59,30,14,0.4)" }}>Itinerary Editor · Airport templates</p>
         <select value={tour.id} onChange={(e) => setSelectedId(e.target.value)}
@@ -3159,7 +3163,8 @@ function ItineraryEditorView({ tours }) {
         </select>
       </div>
 
-      <div className="mx-[10%] mt-5 rounded-[32px] border border-white/50 p-5 shadow-xl sm:p-7" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+      {tabBar}
+      <div className="mx-[10%] mt-3 rounded-[32px] border border-white/50 p-5 shadow-xl sm:p-7" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[34px] font-extrabold leading-tight tracking-tight" style={{ backgroundImage: ZG_GRADIENT, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Airport Transfer</h1>
