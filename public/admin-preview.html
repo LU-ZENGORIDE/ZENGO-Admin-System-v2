@@ -431,20 +431,20 @@ function MapLocationPicker({ value, onChange, label, theme = "dark", size = "def
         </button>
       )}
       {open && (
-        <MapLocationModal label={label} initial={value} theme={theme} radiusEditable={radiusEditable} onClose={() => setOpen(false)}
+        <MapLocationModal label={label} initial={muted ? null : value} hintTitle={muted ? value?.title : null} theme={theme} radiusEditable={radiusEditable} onClose={() => setOpen(false)}
           onSave={(loc) => { onChange(loc); setOpen(false); }} />
       )}
     </>
   );
 }
-function MapLocationModal({ label, initial, theme, radiusEditable = false, onClose, onSave }) {
+function MapLocationModal({ label, initial, hintTitle = null, theme, radiusEditable = false, onClose, onSave }) {
   const [query, setQuery] = useState(initial?.title ?? "");
   const [selected, setSelected] = useState(initial);
   const [radiusKm, setRadiusKm] = useState(initial?.radiusKm ?? 10);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestions = searchMapLocations(query);
   const isLight = theme === "light";
-  const displayLocation = selected ?? { title: query || "Search for a location", address: "Select an address from the suggestions below" };
+  const displayLocation = selected ?? { title: query || hintTitle || "Search for a location", address: "Select an address from the suggestions below" };
   const circleSize = Math.max(50, Math.min(160, radiusKm * 2.6));
   /* Pin position as % of the map box; click or drag anywhere on the map to place it by hand. */
   const [pin, setPin] = useState(initial?.pin ?? { x: 50, y: 50 });
@@ -475,7 +475,7 @@ function MapLocationModal({ label, initial, theme, radiusEditable = false, onClo
               <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isLight ? "bg-white" : "bg-white/10"}`}><IconMapPin size={16} className="text-[#FACC15]" /></span>
               <input type="text" value={query}
                 onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setSelected(null); }}
-                onFocus={() => setShowSuggestions(true)} placeholder="Search for a location..."
+                onFocus={() => setShowSuggestions(true)} placeholder={hintTitle || "Search for a location..."}
                 className={`min-w-0 flex-1 bg-transparent text-sm outline-none ${isLight ? "text-gray-900 placeholder:text-gray-400" : "text-white placeholder:text-white/35"}`} />
               <IconSearch size={16} className={isLight ? "text-gray-400" : "text-white/40"} />
             </div>
@@ -518,7 +518,7 @@ function MapLocationModal({ label, initial, theme, radiusEditable = false, onClo
             </span>
           </div>
           <div className={`mt-3 rounded-lg px-3 py-2 ${isLight ? "bg-gray-50" : "bg-white/5"}`}>
-            <p className={`text-sm font-medium ${isLight ? "text-gray-900" : "text-white"}`}>{displayLocation.title}</p>
+            <p className={`text-sm font-medium ${!selected && !query ? (isLight ? "text-gray-400" : "text-white/40") : (isLight ? "text-gray-900" : "text-white")}`}>{displayLocation.title}</p>
             <p className={`mt-0.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>{displayLocation.address}</p>
             {pinMoved && <p className={`mt-1 text-[11px] font-medium ${isLight ? "text-emerald-600" : "text-emerald-300"}`}>Pin adjusted manually</p>}
           </div>
