@@ -1607,6 +1607,15 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                       )}
                       <MapLocationPicker theme="light" size="compact" label="Pick-up Spot" value={wp.pickupMapLocation ?? null} radiusEditable={draft.serviceType === "Fixed Route"} onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })} />
                       <div aria-hidden="true" className="hidden sm:block" />
+                      <div className="col-span-full">
+                        <DebugField model="waypoints" field="pickup_description">
+                          <div>
+                          <TTFieldLabel>Description</TTFieldLabel>
+                          <textarea rows={2} value={wp.pickupDescription ?? ""} onChange={(e) => updateRouteCopy({ pickupDescription: e.target.value })} placeholder="e.g. Meet at the North Exit, in front of the taxi stand"
+                            className="w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                          </div>
+                        </DebugField>
+                      </div>
                     </div>
                     {wp.stopovers.map((stop, i) => (
                       <div key={i} className={`border-b p-3 ${EDIT_ROUTE_ROW_GRID}`} style={{ borderColor: "var(--border-soft)" }}>
@@ -1619,6 +1628,15 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                         </div>
                         <MapLocationPicker theme="light" size="compact" label={`Stopover ${i + 1}`} value={stop.mapLocation ?? null} onChange={(loc) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], mapLocation: loc }; updateRouteCopy({ stopovers: arr }); }} />
                         <button type="button" onClick={() => updateRouteCopy({ stopovers: wp.stopovers.filter((_, j) => j !== i) })} className="flex h-9 w-8 shrink-0 items-center justify-center rounded text-red-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><IconTrash size={16} /></button>
+                        <div className="col-span-full">
+                          <DebugField model="waypoints" field="stopover_description">
+                            <div>
+                            <TTFieldLabel>Description</TTFieldLabel>
+                            <textarea rows={2} value={stop.description ?? ""} onChange={(e) => { const arr = [...wp.stopovers]; arr[i] = { ...arr[i], description: e.target.value }; updateRouteCopy({ stopovers: arr }); }} placeholder="e.g. What guests will see or do here"
+                              className="w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                            </div>
+                          </DebugField>
+                        </div>
                       </div>
                     ))}
                     <div className="border-b p-3" style={{ borderColor: "var(--border-soft)" }}>
@@ -1641,6 +1659,15 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                       )}
                       <MapLocationPicker theme="light" size="compact" label="Drop-off Spot" value={wp.dropoffMapLocation ?? null} onChange={(loc) => updateRouteCopy({ dropoffMapLocation: loc })} />
                       <div aria-hidden="true" className="hidden sm:block" />
+                      <div className="col-span-full">
+                        <DebugField model="waypoints" field="dropoff_description">
+                          <div>
+                          <TTFieldLabel>Description</TTFieldLabel>
+                          <textarea rows={2} value={wp.dropoffDescription ?? ""} onChange={(e) => updateRouteCopy({ dropoffDescription: e.target.value })} placeholder="e.g. Drop-off at the hotel main entrance"
+                            className="w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                          </div>
+                        </DebugField>
+                      </div>
                     </div>
                   </>
                 )}
