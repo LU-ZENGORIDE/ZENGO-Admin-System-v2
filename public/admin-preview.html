@@ -3241,12 +3241,17 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   const [confirmedEnds, setConfirmedEnds] = useState({ pickup: false, dropoff: false });
   /* Charter only: when on, the End Spot mirrors the Start Spot (round trip). */
   const [sameAsStart, setSameAsStart] = useState(false);
-  const [region, setRegion] = useState("All");
   const { regions } = useContext(RegionsCtx);
-  const visibleTemplates = mode === "charter" && region !== "All" ? templates.filter((t) => regionOfTour(t) === region) : templates;
+  const [region, setRegion] = useState("All");
+  /* Region filter: charter filters by template region; airport lists the airports as its "regions". */
+  const matchesRegion = (t, r) => r === "All" || (mode === "airport" ? t.airport === r : regionOfTour(t) === r);
+  const visibleTemplates = templates.filter((t) => matchesRegion(t, region));
+  const regionOptions = mode === "airport"
+    ? Object.keys(AIRPORT_CODES).filter((a) => templates.some((t) => t.airport === a)).map((a) => ({ value: a, label: airportDisplayName(a) }))
+    : regions.map((r) => ({ value: r, label: r }));
   const changeRegion = (r) => {
     setRegion(r);
-    const list = r === "All" ? templates : templates.filter((t) => regionOfTour(t) === r);
+    const list = templates.filter((t) => matchesRegion(t, r));
     if (list.length && !list.some((t) => t.id === selectedId)) setSelectedId(list[0].id);
   };
   /* Frequently Used Routes scrolls sideways with no scrollbar: vertical mouse wheel is mapped to horizontal
@@ -3343,12 +3348,12 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
       <div className="mx-[10%] mt-4 rounded-2xl border border-white/50 px-4 py-3.5 shadow-sm sm:px-5" style={{ background: "rgba(255,255,255,0.45)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
         <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgba(59,30,14,0.45)" }}>{mode === "charter" ? "Product Catalog" : "Frequently Used Routes"}</p>
-          {mode === "charter" && (
+          {(
             <div className="relative">
               <select value={region} onChange={(e) => changeRegion(e.target.value)} aria-label="Region"
                 className="cursor-pointer appearance-none rounded-full border border-white/70 bg-white/80 py-1.5 pl-3 pr-8 text-xs font-semibold outline-none transition hover:bg-white focus:ring-2 focus:ring-orange-200" style={{ color: "#3b1e0e" }}>
-                <option value="All">All Regions</option>
-                {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+                <option value="All">{mode === "airport" ? "All Airports" : "All Regions"}</option>
+                {regionOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <IconChevronDown size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
@@ -3360,7 +3365,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
           onPointerUp={() => { routesDragRef.current.active = false; }}
           onPointerLeave={() => { routesDragRef.current.active = false; }}
           onClickCapture={(e) => { if (routesDragRef.current.moved) { e.stopPropagation(); e.preventDefault(); routesDragRef.current.moved = false; } }}>
-          {visibleTemplates.length === 0 && <p className="py-2 text-[13px]" style={{ color: "rgba(59,30,14,0.5)" }}>No tours in {region} yet.</p>}
+          {visibleTemplates.length === 0 && <p className="py-2 text-[13px]" style={{ color: "rgba(59,30,14,0.5)" }}>No {mode === "airport" ? "routes" : "tours"} in {regionOptions.find((o) => o.value === region)?.label ?? region} yet.</p>}
           {visibleTemplates.map((t) => {
             const active = t.id === tour.id;
             if (mode === "charter") return <CharterProductCard key={t.id} tour={t} active={active} onSelect={() => setSelectedId(t.id)} />;
