@@ -34,6 +34,8 @@
   .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
   ::-webkit-scrollbar{ height:8px; width:8px; }
   ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:8px; }
+  .no-scrollbar{ scrollbar-width:none; -ms-overflow-style:none; }
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
   .dbg-tag{
     display:inline-block; margin-top:2px; font-size:9px; line-height:1.3; padding:1px 5px;
     border-radius:4px; background:var(--ok-bg); color:var(--ok); font-family:'JetBrains Mono',monospace;
@@ -3078,6 +3080,21 @@ function ItineraryEditorView({ tours, onBack }) {
   const [toAirport, setToAirport] = useState(null);
   const [direction, setDirection] = useState(null);
   const [itinTab, setItinTab] = useState("Airport Transfer");
+  /* Frequently Used Routes scrolls sideways with no scrollbar: vertical mouse wheel is mapped to horizontal
+   * scroll, and the row can be dragged with the mouse (a drag doesn't count as a click on a route). */
+  const routesRowRef = useRef(null);
+  const routesDragRef = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
+  useEffect(() => {
+    const el = routesRowRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [itinTab, tour?.id]);
 
   /* Start from the selected template's Catalog route, deriving the From/To Airport direction from which
    * end holds the template's airport. Edits here are for the current order only and never written back
@@ -3166,12 +3183,17 @@ function ItineraryEditorView({ tours, onBack }) {
       {tabBar}
       <div className="mx-[10%] mt-4 rounded-2xl border border-white/50 px-4 py-3.5 shadow-sm sm:px-5" style={{ background: "rgba(255,255,255,0.45)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
         <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgba(59,30,14,0.45)" }}>Frequently Used Routes</p>
-        <div role="tablist" className="flex flex-wrap gap-2">
+        <div role="tablist" ref={routesRowRef} className="no-scrollbar flex cursor-grab select-none gap-2 overflow-x-auto active:cursor-grabbing"
+          onPointerDown={(e) => { if (e.pointerType !== "mouse") return; routesDragRef.current = { active: true, startX: e.clientX, startScroll: e.currentTarget.scrollLeft, moved: false }; }}
+          onPointerMove={(e) => { const d = routesDragRef.current; if (!d.active) return; const dx = e.clientX - d.startX; if (Math.abs(dx) > 4) d.moved = true; e.currentTarget.scrollLeft = d.startScroll - dx; }}
+          onPointerUp={() => { routesDragRef.current.active = false; }}
+          onPointerLeave={() => { routesDragRef.current.active = false; }}
+          onClickCapture={(e) => { if (routesDragRef.current.moved) { e.stopPropagation(); e.preventDefault(); routesDragRef.current.moved = false; } }}>
           {airportTours.map((t) => {
             const active = t.id === tour.id;
             return (
               <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => setSelectedId(t.id)} title={`${t.id} · ${t.tripName}`}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${active ? "text-white shadow" : "bg-white/80 hover:bg-white"}`}
+                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${active ? "text-white shadow" : "bg-white/80 hover:bg-white"}`}
                 style={active ? { background: ZG_GRADIENT } : { color: "rgba(59,30,14,0.7)" }}>
                 {t.tripName}
               </button>
