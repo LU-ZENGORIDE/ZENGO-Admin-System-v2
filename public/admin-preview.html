@@ -3202,8 +3202,9 @@ function CharterProductCard({ tour, active, onSelect }) {
   const h = [...tour.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7);
   const [c1, c2] = THUMB_PALETTES[h % THUMB_PALETTES.length];
   return (
-    <button type="button" role="tab" aria-selected={active} onClick={onSelect} title={`${tour.id} · ${tour.tripName}`}
-      className={`w-[244px] shrink-0 overflow-hidden rounded-2xl bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${active ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent" : "ring-1 ring-black/5"}`}>
+    <div role="tab" tabIndex={0} aria-selected={active} onClick={onSelect} title={`${tour.id} · ${tour.tripName}`}
+      onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); onSelect(); } }}
+      className={`w-[244px] shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-white text-left shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-orange-300 hover:-translate-y-0.5 hover:shadow-md ${active ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent" : "ring-1 ring-black/5"}`}>
       <div className="relative aspect-video w-full overflow-hidden" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
         <svg viewBox="0 0 160 90" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
           <circle cx={120 - (h % 40)} cy="24" r="10" fill="rgba(255,255,255,0.55)" />
@@ -3219,9 +3220,17 @@ function CharterProductCard({ tour, active, onSelect }) {
           <span className="inline-flex items-center gap-1"><IconMap size={11} />{tour.routeDistanceKm != null ? `${tour.routeDistanceKm} km` : "—"}</span>
           <span className="inline-flex min-w-0 items-center gap-1"><IconMapPin size={11} className="shrink-0" /><span className="truncate">{regionOfTour(tour) ?? "—"}</span></span>
         </div>
-        <p className="text-[15px] font-extrabold tabular-nums" style={{ color: "#EA580C" }}>{formatPrice(tour.price)}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[15px] font-extrabold tabular-nums" style={{ color: "#EA580C" }}>{formatPrice(tour.price)}</p>
+          {tour.previewLinks?.tourDetails && (
+            <a href={tour.previewLinks.tourDetails} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-gray-500 underline-offset-2 transition hover:text-orange-600 hover:underline">
+              View Detail<IconChevronRight size={12} />
+            </a>
+          )}
+        </div>
       </div>
-    </button>
+    </div>
   );
 }
 function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
