@@ -3120,7 +3120,6 @@ function ItineraryEditorView({ tours }) {
     setExpanded(null);
   };
   const patchStop = (i, p) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
-  const addStop = () => setDraftWaypoints((prev) => ({ ...prev, stopovers: [...prev.stopovers, { location: "", waitTime: "30 min", mapLocation: null }] }));
   const removeStop = (i) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.filter((_, j) => j !== i) }));
 
   const liveMetrics = estimateRouteMetrics(draftWaypoints);
@@ -3262,9 +3261,6 @@ function ItineraryEditorView({ tours }) {
                 </div>
               );
             })}
-            <button type="button" onClick={addStop} className="flex w-full items-center gap-2 rounded-b-2xl border-t border-gray-100 px-4 py-3 text-sm font-semibold transition hover:bg-orange-50/60 sm:px-5" style={{ color: "#EA580C" }}>
-              <IconPlus size={15} />Add a stopover
-            </button>
           </div>
 
           {/* Right column: map */}
