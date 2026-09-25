@@ -3054,6 +3054,15 @@ function ItinItineraryMap({ rows, zoom }) {
     </div>
   );
 }
+function deriveAirportDirection(tour) {
+  const airport = tour.airport;
+  if (!airport) return { direction: null, from: null, to: null };
+  const wp = tour.waypoints;
+  const isAirport = (text, loc) => text === airportDisplayName(airport) || text === airport || loc?.title === airport;
+  if (isAirport(wp.pickup, wp.pickupMapLocation)) return { direction: "from", from: airport, to: null };
+  if (isAirport(wp.dropoff, wp.dropoffMapLocation)) return { direction: "to", from: null, to: airport };
+  return { direction: "from", from: null, to: null };
+}
 function ItineraryEditorView({ tours, onUpdateTour }) {
   const airportTours = useMemo(() => tours.filter((t) => t.serviceType === "Airport"), [tours]);
   const [selectedId, setSelectedId] = useState(airportTours[0]?.id ?? null);
@@ -3067,13 +3076,22 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
   const [toAirport, setToAirport] = useState(null);
   const [direction, setDirection] = useState(null);
 
+  /* Load the selected template's Catalog route (and re-load when the Catalog edits it), deriving the
+   * From/To Airport direction from which end holds the template's airport. Our own autosaves come back
+   * identical to the draft and are skipped, so in-progress edits aren't overwritten. */
+  const syncedIdRef = useRef(null);
   useEffect(() => {
-    setDraftWaypoints(tour ? structuredClone(tour.waypoints) : null);
-    setExpanded(null);
-    setFromAirport(null);
-    setToAirport(null);
-    setDirection(null);
-  }, [tour?.id]);
+    if (!tour) { setDraftWaypoints(null); return; }
+    const idChanged = syncedIdRef.current !== tour.id;
+    if (!idChanged && JSON.stringify(tour.waypoints) === JSON.stringify(draftWaypoints)) return;
+    syncedIdRef.current = tour.id;
+    setDraftWaypoints(structuredClone(tour.waypoints));
+    const d = deriveAirportDirection(tour);
+    setDirection(d.direction);
+    setFromAirport(d.from);
+    setToAirport(d.to);
+    if (idChanged) setExpanded(null);
+  }, [tour?.id, tour?.waypoints]);
 
   if (!tour || !draftWaypoints) {
     return (
@@ -3115,7 +3133,7 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
 
   const handleSave = () => {
     const metrics = estimateRouteMetrics(draftWaypoints);
-    onUpdateTour({ ...tour, waypoints: draftWaypoints, routeDistanceKm: metrics?.distanceKm ?? tour.routeDistanceKm, routeDurationMins: metrics?.durationMins ?? tour.routeDurationMins });
+    onUpdateTour({ ...tour, airport: fromAirport ?? toAirport ?? tour.airport, waypoints: draftWaypoints, routeDistanceKm: metrics?.distanceKm ?? tour.routeDistanceKm, routeDurationMins: metrics?.durationMins ?? tour.routeDurationMins });
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1800);
   };
