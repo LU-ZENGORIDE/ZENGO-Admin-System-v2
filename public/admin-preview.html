@@ -3184,6 +3184,8 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
               const airportRow = (row.key === "pickup" && direction === "from") || (row.key === "dropoff" && direction === "to");
               const isOpen = expandable && expanded === row.key;
               const isStop = row.key.startsWith("stop-");
+              /* Start/end text lines up with the text inside the airport dropdown (its px-3 padding). */
+              const alignIndent = !isStop && direction ? "pl-3" : "";
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
                 <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
@@ -3204,9 +3206,9 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
                       ) : (
-                        <span className="block truncate text-[15px] font-bold text-gray-900">{row.name || "Not set"}</span>
+                        <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name || "Not set"}</span>
                       )}
-                      {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${airportRow ? "pl-3" : ""}`}>{row.meta}</span>}
+                      {row.meta && <span className={`block truncate text-[13px] text-gray-500 ${alignIndent}`}>{row.meta}</span>}
                     </div>
                     <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold sm:inline-flex" style={{ color }}>
                       {row.label}
