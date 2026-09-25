@@ -3190,10 +3190,10 @@ function ItineraryEditorView({ tours, onUpdateTour }) {
                   <div role={expandable ? "button" : undefined} tabIndex={expandable ? 0 : undefined}
                     onClick={() => expandable && setExpanded(isOpen ? null : row.key)}
                     onKeyDown={(e) => { if (expandable && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); setExpanded(isOpen ? null : row.key); } }}
-                    className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition sm:gap-4 sm:px-5 ${expandable ? "cursor-pointer hover:bg-gray-50/80" : ""}`}>
+                    className={`flex w-full items-center gap-3 px-4 text-left transition sm:gap-4 sm:px-5 ${isStop ? "py-3.5" : "min-h-[88px] py-5"} ${expandable ? "cursor-pointer hover:bg-gray-50/80" : ""}`}>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ background: color }}>{i + 1}</span>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"><row.icon size={16} /></span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className={`flex min-w-0 flex-1 flex-col ${isStop ? "gap-1" : "gap-2"}`}>
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
