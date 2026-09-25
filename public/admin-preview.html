@@ -3117,6 +3117,9 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   const [fromAirport, setFromAirport] = useState(null);
   const [toAirport, setToAirport] = useState(null);
   const [direction, setDirection] = useState(null);
+  /* Charter pick-up/drop-off start as the template's suggested spots; they count as the order's real
+   * address only once the user picks one in the location modal. */
+  const [confirmedEnds, setConfirmedEnds] = useState({ pickup: false, dropoff: false });
   /* Frequently Used Routes scrolls sideways with no scrollbar: vertical mouse wheel is mapped to horizontal
    * scroll, and the row can be dragged with the mouse (a drag doesn't count as a click on a route). */
   const routesRowRef = useRef(null);
@@ -3143,6 +3146,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
     setDirection(d.direction);
     setFromAirport(d.from);
     setToAirport(d.to);
+    setConfirmedEnds({ pickup: false, dropoff: false });
     setExpanded(null);
   }, [tour?.id, tour?.waypoints, tour?.airport]);
 
@@ -3185,6 +3189,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
     setFromAirport(toAirport);
     setToAirport(fromAirport);
     setDirection((d) => (d === "from" ? "to" : d === "to" ? "from" : d));
+    setConfirmedEnds((c) => ({ pickup: c.dropoff, dropoff: c.pickup }));
     setExpanded(null);
   };
   const patchStop = (i, p) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
@@ -3288,7 +3293,9 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               const alignIndent = !isStop && direction ? "pl-3" : "";
               /* A fixed-route template only names the area (e.g. "Tokyo (23 Wards)") for the non-airport end;
                * until a real address is pinned, show it muted with a prompt to enter one. */
-              const needsExactAddress = !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
+              const needsExactAddress = mode === "charter"
+                ? !isStop && !!row.name && !confirmedEnds[row.key]
+                : !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
                 <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
@@ -3313,7 +3320,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                           <MapLocationPicker theme="light" size="field" label={row.label} placeholder="Please input a location."
                             muted={needsExactAddress}
                             value={row.mapLocation ?? (row.name ? { title: row.name, address: "" } : null)}
-                            onChange={(loc) => patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc } : { dropoff: loc.title, dropoffMapLocation: loc })} />
+                            onChange={(loc) => { patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc } : { dropoff: loc.title, dropoffMapLocation: loc }); setConfirmedEnds((c) => ({ ...c, [row.key]: true })); }} />
                         </div>
                       ) : (
                         <span className={`block truncate text-[15px] font-bold text-gray-900 ${alignIndent}`}>{row.name || "Not set"}</span>
