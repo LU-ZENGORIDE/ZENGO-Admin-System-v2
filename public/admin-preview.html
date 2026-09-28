@@ -540,7 +540,7 @@ function MapLocationModal({ label, initial, hintTitle = null, theme, radiusEdita
                   className={`w-full min-w-0 bg-transparent text-sm tabular-nums outline-none ${isLight ? "text-gray-900" : "text-white"}`} />
                 <span className={`shrink-0 text-xs ${isLight ? "text-gray-400" : "text-white/40"}`}>km</span>
               </div>
-              <p className={`mt-1.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>Pickups within this radius of the pin count as this coordinate for Fixed Route matching.</p>
+              <p className={`mt-1.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>Pickups within this radius of the pin are treated as this pick-up spot.</p>
             </div>
           )}
         </div>
@@ -1605,7 +1605,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                           </div>
                         </DebugField>
                       )}
-                      <MapLocationPicker theme="light" size="compact" label="Pick-up Spot" value={wp.pickupMapLocation ?? null} radiusEditable={draft.serviceType === "Fixed Route"} onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })} />
+                      <MapLocationPicker theme="light" size="compact" label="Pick-up Spot" value={wp.pickupMapLocation ?? null} radiusEditable={draft.serviceType === "Fixed Route" || draft.serviceType === "Sightseeing Charter"} onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })} />
                       <div aria-hidden="true" className="hidden sm:block" />
                       {draft.serviceType === "Sightseeing Charter" && (
                       <div className="col-span-full">

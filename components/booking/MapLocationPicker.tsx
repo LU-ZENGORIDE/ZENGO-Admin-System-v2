@@ -18,7 +18,7 @@ interface MapLocationPickerProps {
    * a small fixed square — for tight grid rows (e.g. the route editor). */
   size?: "default" | "compact";
   /** Shows an editable radius (km) alongside the picked location — used for
-   * Fixed Route pick-up spots, whose coordinate matches within a catchment. */
+   * Fixed Route and Sightseeing Charter pick-up spots, which match within a catchment. */
   radiusEditable?: boolean;
 }
 
@@ -332,8 +332,8 @@ function MapLocationModal({
               <p
                 className={`mt-1.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}
               >
-                Pickups within this radius of the pin count as this
-                coordinate for Fixed Route matching.
+                Pickups within this radius of the pin are treated as this
+                pick-up spot.
               </p>
             </div>
           )}
