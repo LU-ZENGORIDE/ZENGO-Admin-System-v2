@@ -3500,7 +3500,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                   </span>
                 </>)}
               </div>
-              {mode !== "charter" && (
+              {mode === "airport" && (
                 <button type="button" onClick={handleReverse} title="Swap start and end spots (stopovers are reversed too)"
                   className="inline-flex h-8 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-semibold transition hover:bg-orange-100" style={{ color: "#EA580C" }}>
                   <IconArrowUpDown size={13} />Reverse start &amp; end
@@ -3521,10 +3521,12 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               /* A fixed-route template only names the area (e.g. "Tokyo (23 Wards)") for the non-airport end;
                * until a real address is pinned, show it muted with a prompt to enter one. */
               const mirrorsStart = mode === "charter" && row.key === "dropoff" && sameAsStart;
+              /* Custom Trip: the product's destination is fixed by the Catalog template. */
+              const lockedEnd = mode === "custom" && row.key === "dropoff";
               const needsExactAddress = mode === "charter"
                 ? !isStop && !mirrorsStart && !!row.name && !confirmedEnds[row.key]
                 : mode === "custom"
-                  ? !isStop && !!row.name && !row.mapLocation
+                  ? row.key === "pickup" && !!row.name && !row.mapLocation
                   : !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
@@ -3552,6 +3554,12 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
+                      ) : lockedEnd ? (
+                        <div className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700" title="Set by the product — can't be changed">
+                          <IconMapPin size={15} className="shrink-0 text-gray-400" />
+                          <span className="min-w-0 flex-1 truncate">{row.name || "—"}</span>
+                          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Fixed</span>
+                        </div>
                       ) : mirrorsStart ? (
                         <div className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
                           <IconMapPin size={15} className="shrink-0 text-gray-300" />
