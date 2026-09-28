@@ -3312,8 +3312,12 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   const [confirmedEnds, setConfirmedEnds] = useState({ pickup: false, dropoff: false });
   /* Charter only: when on, the End Spot mirrors the Start Spot (round trip). */
   const [sameAsStart, setSameAsStart] = useState(false);
-  /* Custom Trip: which end holds the product's fixed destination (moves to the start when reversed). */
+  /* Custom Trip: which end holds the product's preset destination (moves to the start when reversed).
+   * Changing that destination turns the order into a "Customized Itinerary". */
   const [fixedEnd, setFixedEnd] = useState("dropoff");
+  const [customized, setCustomized] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const selectTemplate = (id) => { if (id === tour?.id) setReloadKey((k) => k + 1); else setSelectedId(id); };
   const { regions } = useContext(RegionsCtx);
   const [region, setRegion] = useState("All");
   /* Region filter: charter filters by template region; airport lists the airports as its "regions". */
@@ -3356,8 +3360,9 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
     setConfirmedEnds({ pickup: false, dropoff: false });
     setSameAsStart(mode === "charter" && !!tour.waypoints.pickup && tour.waypoints.pickup === tour.waypoints.dropoff);
     setFixedEnd("dropoff");
+    setCustomized(false);
     setExpanded(null);
-  }, [tour?.id, tour?.waypoints, tour?.airport]);
+  }, [tour?.id, tour?.waypoints, tour?.airport, reloadKey]);
 
   const backRow = (
     <div className="mx-[10%] flex flex-wrap items-center justify-between gap-3">
@@ -3441,11 +3446,18 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
           onPointerLeave={() => { routesDragRef.current.active = false; }}
           onClickCapture={(e) => { if (routesDragRef.current.moved) { e.stopPropagation(); e.preventDefault(); routesDragRef.current.moved = false; } }}>
           {visibleTemplates.length === 0 && <p className="py-2 text-[13px]" style={{ color: "rgba(59,30,14,0.5)" }}>No {mode === "airport" ? "routes" : "tours"} in {regionOptions.find((o) => o.value === region)?.label ?? region} yet.</p>}
+          {customized && (
+            <button type="button" role="tab" aria-selected="true" title={`Customized from ${tour.tripName}`}
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold text-white shadow"
+              style={{ background: ZG_GRADIENT }}>
+              <IconPencil size={12} />Customized Itinerary
+            </button>
+          )}
           {visibleTemplates.map((t) => {
-            const active = t.id === tour.id;
+            const active = t.id === tour.id && !customized;
             if (mode === "charter") return <CharterProductCard key={t.id} tour={t} active={active} onSelect={() => setSelectedId(t.id)} />;
             return (
-              <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => setSelectedId(t.id)} title={`${t.id} · ${t.tripName}`}
+              <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => selectTemplate(t.id)} title={`${t.id} · ${t.tripName}`}
                 className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${active ? "text-white shadow" : "bg-white/80 hover:bg-white"}`}
                 style={active ? { background: ZG_GRADIENT } : { color: "rgba(59,30,14,0.7)" }}>
                 {t.tripName}
@@ -3525,8 +3537,6 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               /* A fixed-route template only names the area (e.g. "Tokyo (23 Wards)") for the non-airport end;
                * until a real address is pinned, show it muted with a prompt to enter one. */
               const mirrorsStart = mode === "charter" && row.key === "dropoff" && sameAsStart;
-              /* Custom Trip: the product's destination is fixed by the Catalog template. */
-              const lockedEnd = mode === "custom" && row.key === fixedEnd;
               const needsExactAddress = mode === "charter"
                 ? !isStop && !mirrorsStart && !!row.name && !confirmedEnds[row.key]
                 : mode === "custom"
@@ -3558,12 +3568,6 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                       {airportRow ? (
                         <AirportSelect value={row.key === "pickup" ? fromAirport : toAirport}
                           onChange={row.key === "pickup" ? handleFromAirportChange : handleToAirportChange} />
-                      ) : lockedEnd ? (
-                        <div className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700" title="Set by the product — can't be changed">
-                          <IconMapPin size={15} className="shrink-0 text-gray-400" />
-                          <span className="min-w-0 flex-1 truncate">{row.name || "—"}</span>
-                          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Fixed</span>
-                        </div>
                       ) : mirrorsStart ? (
                         <div className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
                           <IconMapPin size={15} className="shrink-0 text-gray-300" />
@@ -3576,6 +3580,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                             value={row.mapLocation ?? (row.name ? { title: row.name, address: "" } : null)}
                             onChange={(loc) => {
                               const mirror = mode === "charter" && sameAsStart && row.key === "pickup";
+                              if (mode === "custom" && row.key === fixedEnd && loc.title !== row.name) setCustomized(true);
                               patch(row.key === "pickup" ? { pickup: loc.title, pickupMapLocation: loc, ...(mirror ? { dropoff: loc.title, dropoffMapLocation: loc } : {}) } : { dropoff: loc.title, dropoffMapLocation: loc });
                               setConfirmedEnds((c) => ({ ...c, [row.key]: true, ...(mirror ? { dropoff: true } : {}) }));
                             }} />
