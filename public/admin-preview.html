@@ -281,7 +281,32 @@ function buildAirportPresetTours() {
     };
   });
 }
-const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours()].map((t) => ({ ...t, region: t.serviceType === "Airport" ? null : (t.region ?? OFFICE_REGION[t.officeLocation] ?? null) }));
+/* Fixed Route presets: area-to-area transfers; pick-up/drop-off are area names until the customer pins an address. */
+const FIXED_ROUTE_DEFS = [
+  { office: "Tokyo", region: "Tokyo Area", from: "Tokyo (23 Wards)", to: "Hakone", km: 95, mins: 110, price: 38000 },
+  { office: "Tokyo", region: "Tokyo Area", from: "Tokyo (23 Wards)", to: "Mt. Fuji 5th Station", km: 140, mins: 150, price: 52000 },
+  { office: "Tokyo", region: "Tokyo Area", from: "Tokyo (23 Wards)", to: "Nikko", km: 150, mins: 140, price: 55000 },
+  { office: "Osaka", region: "Kyoto Area", from: "Osaka City", to: "Kyoto City", km: 55, mins: 65, price: 26000 },
+  { office: "Osaka", region: "Osaka Area", from: "Osaka City", to: "Kobe", km: 35, mins: 45, price: 18000 },
+  { office: "Nagoya", region: "Nagoya Area", from: "Nagoya City", to: "Ise Jingu", km: 120, mins: 110, price: 42000 },
+  { office: "Sapporo", region: "Hokkaido Area", from: "Sapporo City", to: "Otaru", km: 40, mins: 50, price: 20000 },
+];
+function buildFixedRoutePresetTours() {
+  return FIXED_ROUTE_DEFS.map((r, index) => {
+    const id = `#F${String(index + 1).padStart(4, "0")}${r.office[0]}`;
+    const slug = slugifyTripName(`${r.from} to ${r.to}`);
+    return {
+      id, reference: id, tripName: `${r.from} to ${r.to}`, officeLocation: r.office, region: r.region, durationTier: null,
+      status: "active", price: r.price, startTime: "09:00", viewedCount: 0, bookedCount: 0, serviceType: "Fixed Route", airport: null,
+      userName: null, userEmail: null, userSource: null, paymentStatus: null, passengers: null, luggage: null,
+      driverName: null, plateNumber: null, useDefaultPrice: true, vehiclePricing: null, airportVehiclePricing: null, fixedRoutePricing: null,
+      waypoints: { pickup: r.from, pickupTime: "09:00", pickupMapLocation: null, stopovers: [], dropoff: r.to, dropoffMapLocation: null },
+      routeDistanceKm: r.km, routeDurationMins: r.mins, tripDistanceKm: null, tripDurationMins: null,
+      previewLinks: { tourDetails: `https://www.zengoride.com/transfers/${slug}`, tourBooking: `https://exert-hula-resilient.ngrok-free.dev/transfers/${slug}/${String(index + 1).padStart(4, "0")}/2026-09-02` },
+    };
+  });
+}
+const SEED_TOURS = [...SIGHTSEEING_SEED_TOURS, ...buildAirportPresetTours(), ...buildFixedRoutePresetTours()].map((t) => ({ ...t, region: t.serviceType === "Airport" ? null : (t.region ?? OFFICE_REGION[t.officeLocation] ?? null) }));
 
 const SIGHTSEEING_PRICE_SEED = [
   { id: "sp-1", vehicleType: "Commuter Van", vehicleName: "Toyota Hiace Commuter", offices: ["Tokyo"], owner: "Self", available: true, halfDayPrice: 10000, fullDayPrice: 12000 },
@@ -3149,9 +3174,9 @@ function AirportSelect({ value, onChange }) {
   );
 }
 function itinRowsFromWaypoints(wp, direction, dropoffTime, mode = "airport") {
-  const showNames = mode === "charter" || !!direction;
+  const showNames = mode !== "airport" || !!direction;
   return [
-    { key: "pickup", label: "Start Spot", name: showNames ? wp.pickup : "", meta: `Pick-up Time ${wp.pickupTime || "—"}`, mapLocation: wp.pickupMapLocation, icon: mode === "charter" ? IconMapPin : IconPlane },
+    { key: "pickup", label: "Start Spot", name: showNames ? wp.pickup : "", meta: `Pick-up Time ${wp.pickupTime || "—"}`, mapLocation: wp.pickupMapLocation, icon: mode !== "airport" ? IconMapPin : IconPlane },
     ...wp.stopovers.map((s, i) => ({ key: `stop-${i}`, label: `Stop ${i + 1}`, name: s.location, meta: s.waitTime ? `Standby ${s.waitTime}` : "", mapLocation: s.mapLocation, icon: IconMapPin })),
     { key: "dropoff", label: "End Spot", name: showNames ? wp.dropoff : "", meta: `Drop-off Time ${dropoffTime ?? "—"}`, mapLocation: wp.dropoffMapLocation, icon: IconFlag },
   ];
@@ -3193,11 +3218,13 @@ function deriveAirportDirection(tour) {
   if (isAirport(wp.dropoff, wp.dropoffMapLocation)) return { direction: "to", from: null, to: airport };
   return { direction: "from", from: null, to: null };
 }
-const ITIN_MODE_TITLES = { airport: "Airport Transfer", charter: "Tour Charter" };
+const ITIN_MODE_TITLES = { airport: "Airport Transfer", charter: "Tour Charter", custom: "Custom Trip" };
+const ITIN_MODE_SERVICE = { airport: "Airport", charter: "Sightseeing Charter", custom: "Fixed Route" };
 function ItineraryEditorView({ tours, onBack }) {
   const [itinTab, setItinTab] = useState("Airport Transfer");
   const airportTours = useMemo(() => tours.filter((t) => t.serviceType === "Airport"), [tours]);
   const charterTours = useMemo(() => tours.filter((t) => t.serviceType === "Sightseeing Charter"), [tours]);
+  const customTours = useMemo(() => tours.filter((t) => t.serviceType === "Fixed Route"), [tours]);
   const tabBar = (
     <div className="mx-[10%] mt-5 flex justify-center overflow-x-auto">
       <div role="tablist" className="inline-flex gap-1.5 rounded-full border border-white/60 bg-white/60 p-1.5 shadow-sm backdrop-blur">
@@ -3217,6 +3244,8 @@ function ItineraryEditorView({ tours, onBack }) {
         <ItineraryTemplateEditor key="airport" mode="airport" templates={airportTours} tabBar={tabBar} onBack={onBack} />
       ) : itinTab === "Tour Charter" ? (
         <ItineraryTemplateEditor key="charter" mode="charter" templates={charterTours} tabBar={tabBar} onBack={onBack} />
+      ) : itinTab === "Custom Trip" ? (
+        <ItineraryTemplateEditor key="custom" mode="custom" templates={customTours} tabBar={tabBar} onBack={onBack} />
       ) : (<>
         {tabBar}
         <div className="mx-[10%] mt-3 flex min-h-[50vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
@@ -3342,7 +3371,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
       {tabBar}
       <div className="mx-[10%] mt-4 flex min-h-[40vh] flex-col items-center justify-center rounded-[32px] border border-white/50 p-10 text-center shadow-xl" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <p className="text-lg font-semibold" style={{ color: "#3b1e0e" }}>No {modeTitle} templates yet</p>
-        <p className="mt-1 text-sm" style={{ color: "rgba(59,30,14,0.5)" }}>Add a {mode === "airport" ? "Airport" : "Sightseeing Charter"} template in the Catalog to edit its itinerary here.</p>
+        <p className="mt-1 text-sm" style={{ color: "rgba(59,30,14,0.5)" }}>Add a {ITIN_MODE_SERVICE[mode]} template in the Catalog to edit its itinerary here.</p>
       </div>
     </>);
   }
@@ -3471,7 +3500,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                   </span>
                 </>)}
               </div>
-              {mode === "airport" && (
+              {mode !== "charter" && (
                 <button type="button" onClick={handleReverse} title="Swap start and end spots (stopovers are reversed too)"
                   className="inline-flex h-8 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-semibold transition hover:bg-orange-100" style={{ color: "#EA580C" }}>
                   <IconArrowUpDown size={13} />Reverse start &amp; end
@@ -3494,7 +3523,9 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
               const mirrorsStart = mode === "charter" && row.key === "dropoff" && sameAsStart;
               const needsExactAddress = mode === "charter"
                 ? !isStop && !mirrorsStart && !!row.name && !confirmedEnds[row.key]
-                : !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
+                : mode === "custom"
+                  ? !isStop && !!row.name && !row.mapLocation
+                  : !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
                 <div key={row.key} className={i !== rows.length - 1 ? "border-b border-gray-100" : ""}>
