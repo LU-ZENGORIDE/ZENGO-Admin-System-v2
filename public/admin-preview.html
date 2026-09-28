@@ -1180,6 +1180,99 @@ const EDIT_ROUTE_ROW_GRID = "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem_2.75r
 function TTFieldLabel({ children }) {
   return <label className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{children}</label>;
 }
+/* Prototype-only uploads: images are read into data URLs in the browser and live in the template draft. */
+function readImageFiles(fileList) {
+  return Promise.all([...fileList].filter((f) => f.type.startsWith("image/")).map((f) => new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve({ id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: f.name, url: r.result });
+    r.readAsDataURL(f);
+  })));
+}
+function TripMediaSection({ thumbnailUrl, gallery, locked, onChange }) {
+  const thumbInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+  const [dragOver, setDragOver] = useState(null);
+  const setThumb = async (files) => { const [img] = await readImageFiles(files); if (img) onChange("Thumbnail updated", { thumbnailUrl: img.url }); };
+  const addGallery = async (files) => { const imgs = await readImageFiles(files); if (imgs.length) onChange("Gallery images added", { gallery: [...gallery, ...imgs] }); };
+  const move = (i, d) => { const j = i + d; if (j < 0 || j >= gallery.length) return; const next = [...gallery]; [next[i], next[j]] = [next[j], next[i]]; onChange("Gallery reordered", { gallery: next }); };
+  const removeImg = (id) => onChange("Gallery image removed", { gallery: gallery.filter((g) => g.id !== id) });
+  const dropProps = (zone, handler) => locked ? {} : {
+    onDragOver: (e) => { e.preventDefault(); setDragOver(zone); },
+    onDragLeave: () => setDragOver(null),
+    onDrop: (e) => { e.preventDefault(); setDragOver(null); handler(e.dataTransfer.files); },
+  };
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border p-4" style={{ borderColor: "var(--border)" }}>
+      <div>
+        <p className="flex items-center gap-2 text-sm font-bold" style={{ color: "var(--text-1)" }}><IconLayout size={16} className="text-gray-500" />Trip Media</p>
+        <p className="mt-1 text-xs" style={{ color: "var(--text-3)" }}>Thumbnail is shown on product cards; the gallery on the tour details page.</p>
+      </div>
+
+      <div>
+        <TTFieldLabel>Thumbnail · 16:9</TTFieldLabel>
+        <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setThumb(e.target.files); e.target.value = ""; }} />
+        <div className="flex flex-wrap items-start gap-3">
+          <div {...dropProps("thumb", setThumb)} onClick={() => !locked && thumbInputRef.current?.click()}
+            className={`relative flex aspect-video w-full max-w-[280px] items-center justify-center overflow-hidden rounded-lg border-2 border-dashed transition ${locked ? "" : "cursor-pointer hover:border-orange-300"} ${dragOver === "thumb" ? "border-orange-400 bg-orange-50" : ""}`}
+            style={dragOver === "thumb" ? {} : { borderColor: "var(--border)", background: "var(--bg-subtle)" }}>
+            {thumbnailUrl ? <img src={thumbnailUrl} alt="Thumbnail" className="h-full w-full object-cover" /> : (
+              <div className="flex flex-col items-center gap-1 text-center text-xs" style={{ color: "var(--text-3)" }}>
+                <IconPlus size={18} />
+                <span>{locked ? "No thumbnail" : "Click or drop an image"}</span>
+              </div>
+            )}
+          </div>
+          {thumbnailUrl && !locked && (
+            <div className="flex flex-col gap-1.5">
+              <button type="button" onClick={() => thumbInputRef.current?.click()} className="rounded-lg border px-3 py-1.5 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Replace</button>
+              <button type="button" onClick={() => onChange("Thumbnail removed", { thumbnailUrl: null })} className="rounded-lg border px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50" style={{ borderColor: "var(--border)" }}>Remove</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <TTFieldLabel>Trip Gallery · {gallery.length} image{gallery.length === 1 ? "" : "s"}</TTFieldLabel>
+          {!locked && (
+            <button type="button" onClick={() => galleryInputRef.current?.click()} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+              <IconPlus size={12} />Add images
+            </button>
+          )}
+        </div>
+        <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addGallery(e.target.files); e.target.value = ""; }} />
+        {gallery.length === 0 ? (
+          <div {...dropProps("gallery", addGallery)} onClick={() => !locked && galleryInputRef.current?.click()}
+            className={`rounded-lg border-2 border-dashed p-5 text-center text-xs transition ${locked ? "" : "cursor-pointer hover:border-orange-300"} ${dragOver === "gallery" ? "border-orange-400 bg-orange-50" : ""}`}
+            style={dragOver === "gallery" ? {} : { borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>
+            {locked ? "No gallery images yet." : "Click or drop images to build the trip gallery."}
+          </div>
+        ) : (
+          <div {...dropProps("gallery", addGallery)} className={`grid grid-cols-2 gap-2 rounded-lg sm:grid-cols-3 ${dragOver === "gallery" ? "ring-2 ring-orange-300" : ""}`}>
+            {gallery.map((g, i) => (
+              <div key={g.id} className="group relative aspect-video overflow-hidden rounded-lg border" style={{ borderColor: "var(--border)" }}>
+                <img src={g.url} alt={g.name} className="h-full w-full object-cover" />
+                <span className="absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 text-[10px] font-semibold text-white">{i + 1}</span>
+                {!locked && (
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/60 to-transparent p-1.5 opacity-0 transition group-hover:opacity-100">
+                    <div className="flex gap-1">
+                      <button type="button" title="Move earlier" disabled={i === 0} onClick={() => move(i, -1)} className="flex h-6 w-6 items-center justify-center rounded bg-white/90 text-gray-700 disabled:opacity-40"><IconChevronLeft size={12} /></button>
+                      <button type="button" title="Move later" disabled={i === gallery.length - 1} onClick={() => move(i, 1)} className="flex h-6 w-6 items-center justify-center rounded bg-white/90 text-gray-700 disabled:opacity-40"><IconChevronRight size={12} /></button>
+                    </div>
+                    <div className="flex gap-1">
+                      <button type="button" title="Use as thumbnail" onClick={() => onChange("Thumbnail updated", { thumbnailUrl: g.url })} className="rounded bg-white/90 px-1.5 text-[10px] font-semibold text-gray-700">Cover</button>
+                      <button type="button" title="Remove" onClick={() => removeImg(g.id)} className="flex h-6 w-6 items-center justify-center rounded bg-white/90 text-red-600"><IconTrash size={12} /></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDelete, onOpenBooking }) {
   const { regions } = useContext(RegionsCtx);
   const [draft, setDraft] = useState(null);
@@ -1726,6 +1819,11 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
               )
             ) : (
               <div className="rounded-xl border border-dashed p-5 text-center text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-3)" }}>Select a service type to see available vehicle pricing.</div>
+            )}
+
+            {draft.serviceType === "Sightseeing Charter" && (
+              <TripMediaSection thumbnailUrl={draft.thumbnailUrl ?? null} gallery={draft.gallery ?? []} locked={locked}
+                onChange={(label, patch) => commit(label, patch)} />
             )}
           </div>
         </div>
@@ -3273,6 +3371,7 @@ function CharterProductCard({ tour, active, onSelect }) {
           <path d={`M0 90 L0 ${58 + (h % 10)} L${30 + (h % 20)} 38 L${62 + (h % 15)} ${60 - (h % 8)} L${95 + (h % 12)} 30 L160 ${62 - (h % 9)} L160 90 Z`} fill="rgba(255,255,255,0.28)" />
           <path d={`M0 90 L0 72 L${45 + (h % 18)} 56 L${100 - (h % 14)} 74 L160 60 L160 90 Z`} fill="rgba(255,255,255,0.45)" />
         </svg>
+        {tour.thumbnailUrl && <img src={tour.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         {active && <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-orange-600 shadow"><IconCheck size={12} /></span>}
       </div>
       <div className="flex flex-col gap-1.5 p-3">
