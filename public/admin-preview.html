@@ -3312,6 +3312,8 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
   const [confirmedEnds, setConfirmedEnds] = useState({ pickup: false, dropoff: false });
   /* Charter only: when on, the End Spot mirrors the Start Spot (round trip). */
   const [sameAsStart, setSameAsStart] = useState(false);
+  /* Custom Trip: which end holds the product's fixed destination (moves to the start when reversed). */
+  const [fixedEnd, setFixedEnd] = useState("dropoff");
   const { regions } = useContext(RegionsCtx);
   const [region, setRegion] = useState("All");
   /* Region filter: charter filters by template region; airport lists the airports as its "regions". */
@@ -3353,6 +3355,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
     setToAirport(d.to);
     setConfirmedEnds({ pickup: false, dropoff: false });
     setSameAsStart(mode === "charter" && !!tour.waypoints.pickup && tour.waypoints.pickup === tour.waypoints.dropoff);
+    setFixedEnd("dropoff");
     setExpanded(null);
   }, [tour?.id, tour?.waypoints, tour?.airport]);
 
@@ -3396,6 +3399,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
     setToAirport(fromAirport);
     setDirection((d) => (d === "from" ? "to" : d === "to" ? "from" : d));
     setConfirmedEnds((c) => ({ pickup: c.dropoff, dropoff: c.pickup }));
+    setFixedEnd((f) => (f === "dropoff" ? "pickup" : "dropoff"));
     setExpanded(null);
   };
   const patchStop = (i, p) => setDraftWaypoints((prev) => ({ ...prev, stopovers: prev.stopovers.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
@@ -3500,7 +3504,7 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                   </span>
                 </>)}
               </div>
-              {mode === "airport" && (
+              {mode !== "charter" && (
                 <button type="button" onClick={handleReverse} title="Swap start and end spots (stopovers are reversed too)"
                   className="inline-flex h-8 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-semibold transition hover:bg-orange-100" style={{ color: "#EA580C" }}>
                   <IconArrowUpDown size={13} />Reverse start &amp; end
@@ -3522,11 +3526,11 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
                * until a real address is pinned, show it muted with a prompt to enter one. */
               const mirrorsStart = mode === "charter" && row.key === "dropoff" && sameAsStart;
               /* Custom Trip: the product's destination is fixed by the Catalog template. */
-              const lockedEnd = mode === "custom" && row.key === "dropoff";
+              const lockedEnd = mode === "custom" && row.key === fixedEnd;
               const needsExactAddress = mode === "charter"
                 ? !isStop && !mirrorsStart && !!row.name && !confirmedEnds[row.key]
                 : mode === "custom"
-                  ? row.key === "pickup" && !!row.name && !row.mapLocation
+                  ? !isStop && row.key !== fixedEnd && !!row.name && !row.mapLocation
                   : !isStop && !airportRow && !!direction && !!row.name && !row.mapLocation;
               const stopIndex = isStop ? Number(row.key.split("-")[1]) : null;
               return (
