@@ -706,7 +706,7 @@ function ServiceAreasCell({ areas = [], locked, onEdit }) {
 }
 function VehicleAreasModal({ vehicleName, office, tabLabel, cmsAreas, selected, onClose, onSave }) {
   const [picked, setPicked] = useState(() => Object.fromEntries((selected ?? []).filter((r) => r.areaId).map((r) => [r.areaId, r.additionalFare ?? 0])));
-  const toggle = (id) => setPicked((p) => { const n = { ...p }; if (id in n) delete n[id]; else n[id] = 0; return n; });
+  const toggle = (id) => setPicked((p) => { const n = { ...p }; if (id in n) delete n[id]; else n[id] = cmsAreas.find((a) => a.id === id)?.additionalFare ?? 0; return n; });
   const setFare = (id, v) => { const d = v.replace(/[^0-9]/g, ""); setPicked((p) => ({ ...p, [id]: d === "" ? null : parseInt(d, 10) })); };
   return (
     <ModalShell title={`Service Areas · ${vehicleName}`} onClose={onClose}
@@ -2019,7 +2019,7 @@ function ServiceAreaManager({ tabLabel, office, areas, onChange }) {
   const center = OFFICE_CENTER_LOCATIONS[office];
   const save = (updated) => {
     onChange(editing === "new"
-      ? [...areas, { id: `sa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, ...updated }]
+      ? [...areas, { id: `sa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, additionalFare: 0, ...updated }]
       : areas.map((a, i) => (i === editing ? { ...a, ...updated } : a)));
     setEditing(null);
   };
@@ -2047,7 +2047,7 @@ function ServiceAreaManager({ tabLabel, office, areas, onChange }) {
       ) : (
         <table className="w-full text-left text-sm">
           <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-            {["Area Name", "Center", "Radius", "Action"].map((c) => <th key={c} className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>{c}</th>)}
+            {["Area Name", "Center", "Radius", "Additional Base Fare ¥", "Action"].map((c) => <th key={c} className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>{c}</th>)}
           </tr></thead>
           <tbody>
             {areas.map((a, i) => (
@@ -2057,6 +2057,11 @@ function ServiceAreaManager({ tabLabel, office, areas, onChange }) {
                 </td>
                 <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{(a.center ?? center)?.title ?? "—"}</td>
                 <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>≤{a.radiusKm} km</td>
+                <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                  <input type="text" inputMode="numeric" value={a.additionalFare ?? ""} placeholder="0" aria-label={`Additional base fare for ${a.name || `Area ${i + 1}`}`}
+                    onChange={(e) => { const d = e.target.value.replace(/[^0-9]/g, ""); onChange(areas.map((x, j) => (j === i ? { ...x, additionalFare: d === "" ? null : parseInt(d, 10) } : x))); }}
+                    className={`${fieldBox} max-w-[140px] tabular-nums`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                </td>
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     <button type="button" title="Edit area" onClick={() => setEditing(i)} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button>
@@ -2077,8 +2082,8 @@ function ServiceAreaManager({ tabLabel, office, areas, onChange }) {
           onDelete={editing === "new" ? undefined : () => { remove(editing); setEditing(null); }} />
       )}
       {showMap && (
-        <RangeMapModal title="Service Area Map" subtitleLabel={`${tabLabel} · ${office}`} anchor={center} ranges={areas}
-          showFee={false} itemLabel="area" onClose={() => setShowMap(false)} />
+        <RangeMapModal title="Service Area Map" subtitleLabel={`${tabLabel} · ${office}`} anchor={center} ranges={areas.map((a) => ({ ...a, fixedFee: a.additionalFare ?? 0 }))}
+          feeFormat={(v) => `+${v ?? 0}`} itemLabel="area" onClose={() => setShowMap(false)} />
       )}
     </div>
   );
@@ -2526,7 +2531,7 @@ function RangeEditorModal({ airport, range, onSave, onDelete, onClose, title = "
   );
 }
 const RANGE_MAP_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
-function RangeMapModal({ airport, ranges, onClose, title = "Range Map", anchor, subtitleLabel, showFee = true, itemLabel = "range" }) {
+function RangeMapModal({ airport, ranges, onClose, title = "Range Map", anchor, subtitleLabel, showFee = true, itemLabel = "range", feeFormat = formatPrice }) {
   const airportLoc = anchor ?? AIRPORT_MAP_LOCATIONS[airport] ?? { title: airport, address: "" };
   const maxRadius = Math.max(1, ...ranges.map((r) => r.radiusKm || 0));
   /* Largest range fills ~84% of the map height; other ranges scale linearly. Custom centers get a
@@ -2559,7 +2564,7 @@ function RangeMapModal({ airport, ranges, onClose, title = "Range Map", anchor, 
               const { dx, dy } = offsetFor(r.center);
               const size = `${Math.max(6, (r.radiusKm / maxRadius) * 84)}%`;
               return (
-                <div key={r.index} className="absolute rounded-full border-2" title={`${r.name} · ≤${r.radiusKm}km${showFee ? ` · ${formatPrice(r.fixedFee)}` : ""}`}
+                <div key={r.index} className="absolute rounded-full border-2" title={`${r.name} · ≤${r.radiusKm}km${showFee ? ` · ${feeFormat(r.fixedFee)}` : ""}`}
                   style={{ left: `calc(50% + ${dx}%)`, top: `calc(50% + ${dy}%)`, height: size, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)", borderColor: r.color, background: `${r.color}1f` }}>
                   <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow" style={{ background: r.color }}>{r.name || `${itemLabel === "area" ? "Area" : "Range"} ${r.index + 1}`} · {r.radiusKm}km</span>
                 </div>
@@ -2579,7 +2584,7 @@ function RangeMapModal({ airport, ranges, onClose, title = "Range Map", anchor, 
                   <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: RANGE_MAP_COLORS[i % RANGE_MAP_COLORS.length] }} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-900">{r.name || `${itemLabel === "area" ? "Area" : "Range"} ${i + 1}`}</p>
-                    <p className="text-xs tabular-nums text-gray-500">≤{r.radiusKm} km{showFee ? ` · ${formatPrice(r.fixedFee)}` : ""}</p>
+                    <p className="text-xs tabular-nums text-gray-500">≤{r.radiusKm} km{showFee ? ` · ${feeFormat(r.fixedFee)}` : ""}</p>
                     <p className="truncate text-[11px] text-gray-400">Center: {(r.center ?? airportLoc).title}</p>
                   </div>
                 </div>
