@@ -732,6 +732,12 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
     const rows = freshRows.map((row) => { const prev = prevByKey.get(pricingRowKey(row)); return prev ? { ...row, custom: prev.custom, customPrice: prev.customPrice } : row; });
     onChange({ office: officeLocation, airport, rows });
   };
+  const toggleCustom = (index) => {
+    const rows = [...activeRows]; const row = rows[index]; const willBeOn = !row.custom;
+    rows[index] = { ...row, custom: willBeOn, customPrice: willBeOn ? String(row.fixedFee) : "" };
+    onChange({ office: activeOffice, airport: activeAirport, rows });
+  };
+  const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, airport: activeAirport, rows }); };
   return (
     <div className="relative rounded-xl border border-gray-200 p-4">
       <button type="button" title="Reload from CMS" disabled={locked} onClick={handleReload}
@@ -752,17 +758,28 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Name","Owner","Basic Fare ¥","Service Areas"].map((c, ci) => <th key={c} className={`whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 ${ci === 2 ? "text-right" : "text-left"}`}>{c}</th>)}
+              {["Vehicle Name","Owner","Basic Fare ¥","Custom","Service Areas"].map((c, ci) => <th key={c} className={`whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 ${ci === 2 ? "text-right" : "text-left"}`}>{c}</th>)}
             </tr></thead>
             <tbody>
-              {activeRows.map((row) => (
+              {activeRows.map((row, i) => {
+                const invalid = row.custom && !String(row.customPrice ?? "").trim();
+                return (
                 <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
                   <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
                   <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
-                  <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{formatPrice(row.fixedFee)}</td>
+                  <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">
+                    {/* With Custom on, this route's price for the vehicle becomes an editable override of the CMS Basic Fare. */}
+                    {row.custom ? (
+                      <input type="number" min="0" step="100" readOnly={locked} value={row.customPrice ?? ""} onChange={(e) => setCustomPrice(i, e.target.value)} placeholder={invalid ? "Required" : undefined}
+                        aria-label={`Custom price for ${row.vehicleName}`}
+                        className={`ml-auto block w-28 rounded-lg border px-2 py-1.5 text-right text-[13px] font-semibold tabular-nums outline-none ${invalid ? "border-red-300 bg-red-50 text-red-700 placeholder:text-red-400" : "border-[#FACC15] bg-yellow-50 text-gray-900 focus:border-yellow-500"}`} />
+                    ) : formatPrice(row.fixedFee)}
+                  </td>
+                  <td className="px-2 py-[9px]"><Toggle available={!!row.custom} onToggle={() => !locked && toggleCustom(i)} /></td>
                   <td className="px-2 py-[9px]"><CmsAreasCell areas={cmsAreas} /></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
