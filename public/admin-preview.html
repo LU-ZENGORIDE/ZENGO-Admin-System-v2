@@ -630,10 +630,8 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
     onChange({ office: activeOffice, rows });
   };
   const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, rows }); };
-  const [areasRow, setAreasRow] = useState(null);
   const { tabAreas } = useContext(ServiceAreasCtx);
   const cmsAreas = tabAreas["Sightseeing Charter"]?.[activeOffice] ?? [];
-  const setRowAreas = (index, list) => { const rows = [...activeRows]; rows[index] = { ...rows[index], serviceAreas: list }; onChange({ office: activeOffice, rows }, "Service areas updated"); };
   const overrideCount = activeRows.filter((r) => r.custom).length;
   const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
   return (
@@ -670,36 +668,13 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
                       ) : (isHalfDay ? row.halfDayPrice : row.fullDayPrice)}
                     </td>
                     <td className="px-2 py-[9px]"><Toggle available={row.custom} onToggle={() => toggleCustom(i)} /></td>
-                    <td className="px-2 py-[9px]"><ServiceAreasCell areas={resolveVehicleAreas(row.serviceAreas, cmsAreas)} locked={locked} onEdit={() => setAreasRow(i)} /></td>
+                    <td className="px-2 py-[9px]"><CmsAreasCell areas={cmsAreas} /></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-      )}
-      {areasRow !== null && activeRows[areasRow] && (
-        <VehicleAreasModal vehicleName={activeRows[areasRow].vehicleName} office={activeOffice} tabLabel="Sightseeing Charter" cmsAreas={cmsAreas} selected={activeRows[areasRow].serviceAreas}
-          onClose={() => setAreasRow(null)} onSave={(list) => { setRowAreas(areasRow, list); setAreasRow(null); }} />
-      )}
-    </div>
-  );
-}
-/* Vehicle Pricing table cell: area tags plus an Add/Edit button that opens VehicleAreasModal. */
-function ServiceAreasCell({ areas = [], locked, onEdit }) {
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      {areas.map((a, ai) => (
-        <span key={ai} className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">
-          <IconMapPin size={10} className="text-emerald-500" />{a.name || `Area ${ai + 1}`} · ≤{a.radiusKm}km · +{a.additionalFare ?? 0}
-        </span>
-      ))}
-      {!areas.length && locked && <span className="text-[11px] text-gray-400">All areas</span>}
-      {!locked && (
-        <button type="button" onClick={onEdit}
-          className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50">
-          {areas.length ? <><IconPencil size={10} />Edit</> : <><IconPlus size={10} />Add area</>}
-        </button>
       )}
     </div>
   );
@@ -717,47 +692,8 @@ function CmsAreasCell({ areas = [] }) {
     </div>
   );
 }
-function VehicleAreasModal({ vehicleName, office, tabLabel, cmsAreas, selected, onClose, onSave }) {
-  const [picked, setPicked] = useState(() => Object.fromEntries((selected ?? []).filter((r) => r.areaId).map((r) => [r.areaId, r.additionalFare ?? 0])));
-  const toggle = (id) => setPicked((p) => { const n = { ...p }; if (id in n) delete n[id]; else n[id] = cmsAreas.find((a) => a.id === id)?.additionalFare ?? 0; return n; });
-  const setFare = (id, v) => { const d = v.replace(/[^0-9]/g, ""); setPicked((p) => ({ ...p, [id]: d === "" ? null : parseInt(d, 10) })); };
-  return (
-    <ModalShell title={`Service Areas · ${vehicleName}`} onClose={onClose}
-      footer={(<>
-        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
-        <button type="button" onClick={() => onSave(cmsAreas.filter((a) => a.id in picked).map((a) => ({ areaId: a.id, additionalFare: picked[a.id] })))} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
-      </>)}>
-      <p className="text-xs" style={{ color: "var(--text-3)" }}>Choose which {office} service areas from Pricing CMS › {tabLabel} this vehicle serves. Pick-ups inside an area pay this template's price plus that area's additional base fare.</p>
-      {cmsAreas.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
-          No service areas for {office} yet. Add them in Pricing CMS › {tabLabel} › Service Areas.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
-            <span>Area</span><span>Additional Base Fare ¥</span>
-          </div>
-          {cmsAreas.map((a, i) => {
-            const on = a.id in picked;
-            return (
-              <div key={a.id} className="grid grid-cols-[minmax(0,1fr)_150px] items-center gap-2">
-                <label className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition hover:border-gray-400" style={{ borderColor: on ? "#FACC15" : "var(--border)", background: on ? "rgba(250,204,21,0.08)" : "var(--bg-card)", color: "var(--text-1)" }}>
-                  <input type="checkbox" checked={on} onChange={() => toggle(a.id)} className="h-4 w-4 accent-orange-500" />
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RANGE_MAP_COLORS[i % RANGE_MAP_COLORS.length] }} />
-                  <span className="truncate">{a.name || `Area ${i + 1}`} · ≤{a.radiusKm} km</span>
-                </label>
-                <input type="text" inputMode="numeric" disabled={!on} value={on ? (picked[a.id] ?? "") : ""} onChange={(e) => setFare(a.id, e.target.value)} placeholder={on ? "0" : "—"}
-                  className={`${fieldBox} tabular-nums disabled:opacity-50`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </ModalShell>
-  );
-}
 /* Pricing CMS office-level service areas, shared app-wide: { [pricing tab]: { [office]: area[] } }.
- * Catalog vehicle pricing links to these by id (plus a per-vehicle additional base fare). */
+ * Catalog vehicle pricing tables show them read-only for the template's office. */
 /* Preset areas so every office starts with a usable set: a free city core plus paid outer rings. */
 const SERVICE_AREA_TEMPLATE = [
   { key: "core", name: "City Center", radiusKm: 15, additionalFare: 0 },
@@ -770,13 +706,6 @@ const SERVICE_AREA_SEED = Object.fromEntries(["Sightseeing Charter", "Airport Tr
   }))])),
 ]));
 const ServiceAreasCtx = createContext({ tabAreas: SERVICE_AREA_SEED, setTabAreas: () => {} });
-function resolveVehicleAreas(rowAreas = [], cmsAreas = []) {
-  return rowAreas.map((ra) => {
-    if (!ra.areaId) return ra;
-    const a = cmsAreas.find((c) => c.id === ra.areaId);
-    return a ? { ...a, additionalFare: ra.additionalFare } : null;
-  }).filter(Boolean);
-}
 /* Live Pricing CMS › Airport Price rows, shared app-wide so Catalog templates always show the current CMS ranges. */
 const AirportPricingCtx = createContext({ airportRows: AIRPORT_PRICE_SEED, setAirportRows: () => {} });
 function loadAirportRowsForOfficeAirport(office, airport, sourceRows = AIRPORT_PRICE_SEED) {
@@ -1499,18 +1428,16 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
     if (JSON.stringify(before) === JSON.stringify(draft)) return;
     setHistory((h) => [...h, { label: "Field edited", snapshot: before }]);
   };
-  const handleVehiclePricingChange = (pricing, label) => {
+  const handleVehiclePricingChange = (pricing) => {
     if (pricing === null && draft.vehiclePricing) commit("Vehicle prices cleared", { vehiclePricing: null });
-    else if (label) commit(label, { vehiclePricing: pricing });
     else update({ vehiclePricing: pricing });
   };
   const handleAirportVehiclePricingChange = (pricing) => {
     if (pricing === null && draft.airportVehiclePricing) commit("Vehicle prices cleared", { airportVehiclePricing: null });
     else update({ airportVehiclePricing: pricing });
   };
-  const handleFixedRoutePricingChange = (pricing, label) => {
+  const handleFixedRoutePricingChange = (pricing) => {
     if (pricing === null && draft.fixedRoutePricing) commit("Vehicle prices cleared", { fixedRoutePricing: null });
-    else if (label) commit(label, { fixedRoutePricing: pricing });
     else update({ fixedRoutePricing: pricing });
   };
   const handleSave = () => {
