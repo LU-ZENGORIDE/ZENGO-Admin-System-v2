@@ -1971,7 +1971,7 @@ function AirportModal({ airport: initial, onClose, onSave, onDelete }) {
     </ModalShell>
   );
 }
-const PRICING_TABS = ["Sightseeing Charter", "Airport Transfer", "Customized Price", "Offices", "Airport Management", "Vehicle Lineup"];
+const PRICING_TABS = ["Sightseeing Charter", "Airport Transfer", "Customized Route", "Offices", "Airport Management", "Vehicle Lineup"];
 
 function PricingCMSView() {
   const [activeTab, setActiveTab] = useState("Sightseeing Charter");
@@ -2101,7 +2101,7 @@ function PricingCMSView() {
               onSave={(u) => { setAirportRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingAirportRow(null); }} />
           )}
         </>
-      ) : activeTab === "Customized Price" ? (
+      ) : activeTab === "Customized Route" ? (
         <>
           <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={customCounts} />
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
@@ -2158,7 +2158,7 @@ function PricingCMSView() {
                 </button>
                 <p className="pr-7 text-base font-bold" style={{ color: "var(--text-1)" }}>{s.office}</p>
                 <div className="mt-3 flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: "var(--border-soft)" }}>
-                  {[["Sightseeing Charter", s.tourCharters], ["Airport Transfer", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
+                  {[["Sightseeing Charter", s.tourCharters], ["Airport Transfer", s.airportTransfers], ["Customized Route", s.customizedPrice]].map(([label, stat]) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span style={{ color: "var(--text-2)" }}>{label}</span>
                       <span className="font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>{stat.active}<span className="font-normal" style={{ color: "var(--text-3)" }}> / {stat.total} active</span></span>
@@ -2652,7 +2652,7 @@ function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSav
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
   const num = fieldBox + " tabular-nums";
   return (
-    <ModalShell title="Edit Customized Price" onClose={onClose} maxWidth="max-w-2xl"
+    <ModalShell title="Edit Customized Route" onClose={onClose} maxWidth="max-w-2xl"
       footer={(<>
         <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
         <button type="button" onClick={() => onSave(draft)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
