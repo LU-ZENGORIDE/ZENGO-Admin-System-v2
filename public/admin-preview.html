@@ -2579,7 +2579,7 @@ function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSav
             className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
             <span className="flex min-w-0 items-center gap-2">
               <IconMapPin size={14} className={area ? "shrink-0 text-emerald-500" : "shrink-0 text-gray-300"} />
-              <span className="truncate">{area ? (area.name || "Service area") : "Not set — applies to every pick-up in this office"}</span>
+              <span className="truncate">{area ? `${area.name || "Service area"} · ≤${area.radiusKm} km` : "Not set — applies to every pick-up in this office"}</span>
             </span>
             <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>{area ? "Edit" : "Set area"}</span>
           </button>
