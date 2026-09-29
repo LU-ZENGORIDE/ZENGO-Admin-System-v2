@@ -1309,6 +1309,7 @@ function TripMediaSection({ thumbnailUrl, gallery, locked, onChange }) {
     </div>
   );
 }
+const QUARTER_HOUR_TIMES = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`);
 function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDelete, onOpenBooking }) {
   const { regions } = useContext(RegionsCtx);
   const [draft, setDraft] = useState(null);
@@ -1463,6 +1464,9 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
     if (!draft.officeLocation) return setSaveError("Select an office location before saving.");
     if (draft.serviceType === "Sightseeing Charter" && !draft.durationTier) return setSaveError("Select a duration tier before saving.");
     if (draft.serviceType === "Airport" && !draft.airport) return setSaveError("Select an airport before saving.");
+    if (draft.serviceType === "Sightseeing Charter" && draft.pickupTimeFrom && draft.pickupTimeTo && draft.pickupTimeFrom > draft.pickupTimeTo) {
+      return setSaveError("The pick-up time window ends before it starts.");
+    }
     const hasMissingCustomPrice = draft.vehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim()) || draft.airportVehiclePricing?.rows.some((row) => row.custom && !row.customPrice.trim()) || draft.fixedRoutePricing?.rows.some((row) => row.custom && !row.customPrice.trim());
     if (hasMissingCustomPrice) return setSaveError("Set a custom price for every vehicle with Custom turned on, or turn Custom off.");
     setSaveError(null);
@@ -1719,6 +1723,34 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                   )}
                 </div>
               </div>
+
+              {draft.serviceType === "Sightseeing Charter" && (
+                <DebugField model="tour_templates" field="pickup_time_window">
+                  <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}>
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}><IconClock size={13} />Pick-up Time Window</span>
+                    <div className="flex items-center gap-2">
+                      <select aria-label="Earliest pick-up time" disabled={locked} value={draft.pickupTimeFrom ?? ""}
+                        onChange={(e) => commit("Pick-up window start changed", { pickupTimeFrom: e.target.value || null })}
+                        className="rounded-lg border px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400 disabled:cursor-default" style={fieldStyle}>
+                        <option value="">From…</option>
+                        {QUARTER_HOUR_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <span style={{ color: "var(--text-3)" }}>–</span>
+                      <select aria-label="Latest pick-up time" disabled={locked} value={draft.pickupTimeTo ?? ""}
+                        onChange={(e) => commit("Pick-up window end changed", { pickupTimeTo: e.target.value || null })}
+                        className="rounded-lg border px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400 disabled:cursor-default" style={fieldStyle}>
+                        <option value="">To…</option>
+                        {QUARTER_HOUR_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    {draft.pickupTimeFrom && draft.pickupTimeTo && draft.pickupTimeFrom > draft.pickupTimeTo ? (
+                      <span className="text-xs font-medium text-red-500">End time must be after the start time.</span>
+                    ) : (
+                      <span className="text-xs" style={{ color: "var(--text-3)" }}>Customers can choose a pick-up time in this range (15-minute steps).</span>
+                    )}
+                  </div>
+                </DebugField>
+              )}
 
               <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
                 {!routeEditing ? (
@@ -3713,7 +3745,10 @@ function ItineraryTemplateEditor({ mode, templates, tabBar, onBack }) {
           <div className="flex min-w-0 flex-1 flex-wrap gap-3">
             <MiniDatePicker icon={IconCalendarClock} label="Date" value={scheduledDate} onChange={setScheduledDate} />
             <MiniTimePicker icon={IconClock} label="Pick-up Time" value={draftWaypoints.pickupTime} onChange={(t) => patch({ pickupTime: t })}
-              {...(mode === "charter" && timeToMins(tour.waypoints.pickupTime) != null ? {
+              {...(mode === "charter" && (tour.pickupTimeFrom || tour.pickupTimeTo) ? {
+                minTime: tour.pickupTimeFrom ?? "00:00",
+                maxTime: tour.pickupTimeTo ?? "23:45",
+              } : mode === "charter" && timeToMins(tour.waypoints.pickupTime) != null ? {
                 minTime: minsToTime(Math.max(0, timeToMins(tour.waypoints.pickupTime) - 60)),
                 maxTime: minsToTime(Math.min(1439, timeToMins(tour.waypoints.pickupTime) + 60)),
               } : {})} />
