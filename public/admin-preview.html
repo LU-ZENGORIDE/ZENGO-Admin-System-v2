@@ -688,7 +688,7 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
                       <div className="flex flex-wrap items-center gap-1">
                         {(row.serviceAreas ?? []).map((a, ai) => (
                           <span key={ai} className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">
-                            <IconMapPin size={10} className="text-emerald-500" />{a.name || `Area ${ai + 1}`} · ≤{a.radiusKm}km{a.additionalFare ? ` · +${formatPrice(a.additionalFare)}` : ""}
+                            <IconMapPin size={10} className="text-emerald-500" />{a.name || `Area ${ai + 1}`} · ≤{a.radiusKm}km · +{a.additionalFare ?? 0}
                           </span>
                         ))}
                         {!(row.serviceAreas ?? []).length && locked && <span className="text-[11px] text-gray-400">All areas</span>}
@@ -2123,7 +2123,7 @@ function PricingCMSView() {
                       {serviceAreasFor(row, officeFilter).length
                         ? <div className="flex flex-col gap-1">{serviceAreasFor(row, officeFilter).map((a, i) => (
                             <span key={i} className="inline-flex w-fit items-center gap-1 rounded-md border px-2 py-0.5 tabular-nums" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}>
-                              <IconMapPin size={11} className="text-emerald-500" />{a.name || `Area ${i + 1}`} · ≤{a.radiusKm}km{a.additionalFare ? ` · +${formatPrice(a.additionalFare)}` : ""}
+                              <IconMapPin size={11} className="text-emerald-500" />{a.name || `Area ${i + 1}`} · ≤{a.radiusKm}km · +{a.additionalFare ?? 0}
                             </span>
                           ))}</div>
                         : <span style={{ color: "var(--text-3)" }}>All areas</span>}
@@ -2613,7 +2613,7 @@ function ServiceAreaListEditor({ areas, onChange, office, vehicleName, subtitleN
                 className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
                 <span className="flex min-w-0 items-center gap-2">
                   <IconMapPin size={14} className="shrink-0 text-emerald-500" />
-                  <span className="truncate">{`${a.name || `Area ${i + 1}`} · ≤${a.radiusKm} km`}</span>
+                  <span className="truncate">{`${a.name || `Area ${i + 1}`} · ≤${a.radiusKm} km · +${a.additionalFare ?? 0}`}</span>
                 </span>
                 <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>Edit</span>
               </button>
