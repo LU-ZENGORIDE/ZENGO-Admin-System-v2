@@ -112,6 +112,12 @@ const OFFICE_LOCATIONS = ["Tokyo", "Osaka", "Nagoya", "Sapporo"];
 /* Region is the customer-facing area a template is sold under; it defaults from the office but can differ (e.g. Kyoto tours run from Osaka). */
 const CHARTER_REGIONS = ["Tokyo Area", "Kyoto Area", "Osaka Area", "Hokkaido Area", "Nagoya Area"];
 const OFFICE_REGION = { Tokyo: "Tokyo Area", Osaka: "Osaka Area", Nagoya: "Nagoya Area", Sapporo: "Hokkaido Area" };
+const OFFICE_CENTER_LOCATIONS = {
+  Tokyo: { title: "Tokyo Station", address: "1 Chome Marunouchi, Chiyoda City, Tokyo, Japan" },
+  Osaka: { title: "Osaka Station", address: "3 Chome-1-1 Umeda, Kita Ward, Osaka, Japan" },
+  Nagoya: { title: "Nagoya Station", address: "1 Chome-1-4 Meieki, Nakamura Ward, Nagoya, Aichi, Japan" },
+  Sapporo: { title: "Sapporo Station", address: "Kita 6 Jonishi, Kita Ward, Sapporo, Hokkaido, Japan" },
+};
 const regionOfTour = (t) => t.region ?? OFFICE_REGION[t.officeLocation] ?? null;
 /* Editable region list (Catalog › Region Management), shared by the template modal and Itinerary Editor. */
 const RegionsCtx = createContext({ regions: CHARTER_REGIONS, saveRegions: () => {} });
@@ -2067,7 +2073,7 @@ function PricingCMSView() {
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full min-w-[1200px] text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Name","Owner","Available","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Dispatch Km","Return Km","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Owner","Available","Service Area","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Dispatch Km","Return Km","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
                 {filteredCustom.map((row) => (
@@ -2075,6 +2081,11 @@ function PricingCMSView() {
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>{row.vehicleName}</td>
                     <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, row.vehicleType, row.vehicleName, officeFilter) ?? row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setCustomRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: "var(--text-2)" }}>
+                      {row.serviceAreas?.[officeFilter]
+                        ? <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 tabular-nums" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}><IconMapPin size={11} className="text-emerald-500" />{row.serviceAreas[officeFilter].center?.title ?? "—"} · ≤{row.serviceAreas[officeFilter].radiusKm}km</span>
+                        : <span style={{ color: "var(--text-3)" }}>All areas</span>}
+                    </td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.minDurationHrs)}</td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? formatPrice(row.unitPrice) : formatPrice(row.unit1to4)}</td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? <span style={{ color: "var(--text-3)" }}>—</span> : formatPrice(row.unit4to7)}</td>
@@ -2272,10 +2283,11 @@ function SightseeingPriceModal({ row, officeFilter, vehicleLineup, onClose, onSa
   );
 }
 
-function RangeEditorModal({ airport, range, onSave, onDelete, onClose }) {
+/* Center + radius editor. Airport Price uses it for fixed-rate ranges; Customized Price for a vehicle's service area. */
+function RangeEditorModal({ airport, range, onSave, onDelete, onClose, title = "Fix Rate Range", subtitle, defaultCenter, nameLabel = "Fixed Range Name", saveLabel = "Set range", deleteLabel = "Delete range" }) {
   const [name, setName] = useState(range.name ?? "New range");
   const [radiusKm, setRadiusKm] = useState(range.radiusKm ?? 0);
-  const fallbackCenter = AIRPORT_MAP_LOCATIONS[airport] ?? { title: airport, address: "" };
+  const fallbackCenter = defaultCenter ?? AIRPORT_MAP_LOCATIONS[airport] ?? { title: airport ?? "", address: "" };
   const [center, setCenter] = useState(range.center ?? fallbackCenter);
   const [query, setQuery] = useState((range.center ?? fallbackCenter).title);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -2287,13 +2299,13 @@ function RangeEditorModal({ airport, range, onSave, onDelete, onClose }) {
       <div role="dialog" aria-modal="true" className="w-full max-w-lg overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
           <div>
-            <p className="text-base font-bold text-gray-900">Fix Rate Range</p>
-            <p className="mt-0.5 text-xs text-gray-500">{airportDisplayName(airport)} · applies to this vehicle only</p>
+            <p className="text-base font-bold text-gray-900">{title}</p>
+            <p className="mt-0.5 text-xs text-gray-500">{subtitle ?? `${airportDisplayName(airport)} · applies to this vehicle only`}</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><IconX size={16} /></button>
         </div>
         <div className="max-h-[75vh] overflow-y-auto p-5">
-          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Fixed Range Name</label>
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">{nameLabel}</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
 
@@ -2349,10 +2361,10 @@ function RangeEditorModal({ airport, range, onSave, onDelete, onClose }) {
           <p className="mt-2 text-xs text-gray-500">{center.address}</p>
         </div>
         <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3.5">
-          <button type="button" onClick={onDelete} className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 transition hover:text-red-700"><IconTrash size={14} />Delete range</button>
+          {onDelete ? <button type="button" onClick={onDelete} className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 transition hover:text-red-700"><IconTrash size={14} />{deleteLabel}</button> : <span />}
           <div className="flex items-center gap-2">
             <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">Cancel</button>
-            <button type="button" onClick={() => onSave({ name, radiusKm, center })} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">Set range</button>
+            <button type="button" onClick={() => onSave({ name, radiusKm, center })} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">{saveLabel}</button>
           </div>
         </div>
       </div>
@@ -2531,6 +2543,10 @@ function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }
 
 function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
+  const [editingArea, setEditingArea] = useState(false);
+  /* Service area is per office: the price applies only to pick-ups inside this circle for the filtered office. */
+  const area = draft.serviceAreas?.[officeFilter] ?? null;
+  const setArea = (a) => setDraft((prev) => ({ ...prev, serviceAreas: { ...(prev.serviceAreas ?? {}), [officeFilter]: a } }));
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
   const num = fieldBox + " tabular-nums";
@@ -2557,6 +2573,30 @@ function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSav
         </div>
       </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
+      <Field label={`Service Area · ${officeFilter}`}>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setEditingArea(true)}
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
+            <span className="flex min-w-0 items-center gap-2">
+              <IconMapPin size={14} className={area ? "shrink-0 text-emerald-500" : "shrink-0 text-gray-300"} />
+              <span className="truncate">{area ? `${area.name || "Service area"} · ${area.center?.title ?? "—"} · ≤${area.radiusKm} km` : "Not set — applies to every pick-up in this office"}</span>
+            </span>
+            <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>{area ? "Edit" : "Set area"}</span>
+          </button>
+          {area && (
+            <button type="button" title="Remove service area" onClick={() => setArea(null)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-red-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={15} /></button>
+          )}
+        </div>
+      </Field>
+      {editingArea && (
+        <RangeEditorModal title="Service Area" subtitle={`${draft.vehicleName} · ${officeFilter} office · applies to this price only`}
+          nameLabel="Area Name" saveLabel="Set area" deleteLabel="Remove area"
+          defaultCenter={OFFICE_CENTER_LOCATIONS[officeFilter]}
+          range={area ?? { name: `${officeFilter} service area`, radiusKm: 30, center: null }}
+          onClose={() => setEditingArea(false)}
+          onSave={(updated) => { setArea(updated); setEditingArea(false); }}
+          onDelete={area ? () => { setArea(null); setEditingArea(false); } : undefined} />
+      )}
       <Field label="Min. Fare (hrs)"><input type="text" inputMode="numeric" value={draft.minDurationHrs ?? ""} onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })} placeholder="0" className={`${num} max-w-[110px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
       <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border-soft)" }}><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Tiered Pricing</p><Toggle available={draft.tieredPricing !== false} onToggle={() => patch({ tieredPricing: !(draft.tieredPricing !== false) })} /></div>
       {draft.tieredPricing !== false ? (
