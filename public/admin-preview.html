@@ -646,6 +646,8 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
     onChange({ office: activeOffice, rows });
   };
   const setCustomPrice = (index, value) => { const rows = [...activeRows]; rows[index] = { ...rows[index], customPrice: value }; onChange({ office: activeOffice, rows }); };
+  const [areasRow, setAreasRow] = useState(null);
+  const setRowAreas = (index, list) => { const rows = [...activeRows]; rows[index] = { ...rows[index], serviceAreas: list }; onChange({ office: activeOffice, rows }, "Service areas updated"); };
   const overrideCount = activeRows.filter((r) => r.custom).length;
   const missingCount = activeRows.filter((r) => r.custom && !r.customPrice.trim()).length;
   return (
@@ -662,9 +664,9 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
         <div className="mt-3.5 rounded-[10px] border border-dashed border-gray-200 bg-gray-50/60 p-5 text-center text-xs text-gray-500">No available Sightseeing vehicles found for {officeLocation}.</div>
       ) : (
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
-          <table className="w-full min-w-[480px] border-collapse text-left text-[13px]">
+          <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Name","Owner", isHalfDay ? "Half Day ¥" : "Full Day ¥","Custom"].map((c, ci) => <th key={c} className={`whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 ${ci === 2 ? "text-right" : "text-left"}`}>{c}</th>)}
+              {["Vehicle Name","Owner", isHalfDay ? "Half Day ¥" : "Full Day ¥","Custom","Service Areas"].map((c, ci) => <th key={c} className={`whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 ${ci === 2 ? "text-right" : "text-left"}`}>{c}</th>)}
             </tr></thead>
             <tbody>
               {activeRows.map((row, i) => {
@@ -682,6 +684,22 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
                       ) : (isHalfDay ? row.halfDayPrice : row.fullDayPrice)}
                     </td>
                     <td className="px-2 py-[9px]"><Toggle available={row.custom} onToggle={() => toggleCustom(i)} /></td>
+                    <td className="px-2 py-[9px]">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(row.serviceAreas ?? []).map((a, ai) => (
+                          <span key={ai} className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">
+                            <IconMapPin size={10} className="text-emerald-500" />{a.name || `Area ${ai + 1}`} · ≤{a.radiusKm}km{a.additionalFare ? ` · +${formatPrice(a.additionalFare)}` : ""}
+                          </span>
+                        ))}
+                        {!(row.serviceAreas ?? []).length && locked && <span className="text-[11px] text-gray-400">All areas</span>}
+                        {!locked && (
+                          <button type="button" onClick={() => setAreasRow(i)}
+                            className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50">
+                            {(row.serviceAreas ?? []).length ? <><IconPencil size={10} />Edit</> : <><IconPlus size={10} />Add area</>}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -689,7 +707,25 @@ function VehiclePricingTable({ officeLocation, durationTier, pricing, onChange, 
           </table>
         </div>
       )}
+      {areasRow !== null && activeRows[areasRow] && (
+        <VehicleAreasModal vehicleName={activeRows[areasRow].vehicleName} office={activeOffice} areas={activeRows[areasRow].serviceAreas ?? []}
+          onClose={() => setAreasRow(null)} onSave={(list) => { setRowAreas(areasRow, list); setAreasRow(null); }} />
+      )}
     </div>
+  );
+}
+function VehicleAreasModal({ vehicleName, office, areas, onClose, onSave }) {
+  const [draftAreas, setDraftAreas] = useState(areas);
+  return (
+    <ModalShell title={`Service Areas · ${vehicleName}`} onClose={onClose}
+      footer={(<>
+        <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>Cancel</button>
+        <button type="button" onClick={() => onSave(draftAreas)} className="rounded-lg bg-[#FACC15] px-5 py-2 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">OK</button>
+      </>)}>
+      <p className="text-xs" style={{ color: "var(--text-3)" }}>Pick-ups inside an area pay this template's price plus that area's additional base fare.</p>
+      <ServiceAreaListEditor areas={draftAreas} onChange={setDraftAreas} office={office} vehicleName={vehicleName}
+        subtitleNote="applies to this template only" emptyText="No areas — this template's price applies to every pick-up." />
+    </ModalShell>
   );
 }
 /* Live Pricing CMS › Airport Price rows, shared app-wide so Catalog templates always show the current CMS ranges. */
@@ -1416,8 +1452,9 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
     if (JSON.stringify(before) === JSON.stringify(draft)) return;
     setHistory((h) => [...h, { label: "Field edited", snapshot: before }]);
   };
-  const handleVehiclePricingChange = (pricing) => {
+  const handleVehiclePricingChange = (pricing, label) => {
     if (pricing === null && draft.vehiclePricing) commit("Vehicle prices cleared", { vehiclePricing: null });
+    else if (label) commit(label, { vehiclePricing: pricing });
     else update({ vehiclePricing: pricing });
   };
   const handleAirportVehiclePricingChange = (pricing) => {
@@ -2544,18 +2581,77 @@ function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }
   );
 }
 
+/* Editable list of service areas (center + radius) each with an Additional Base Fare.
+ * Used by Pricing CMS › Customized Price and the Sightseeing Charter vehicle pricing table. */
+function ServiceAreaListEditor({ areas, onChange, office, vehicleName, subtitleNote = "applies to this price only", emptyText = "No areas — this price applies to every pick-up in this office." }) {
+  const [editingArea, setEditingArea] = useState(null); // index, or "new"
+  const setAreas = onChange;
+  const patchArea = (i, p) => setAreas(areas.map((a, j) => (j === i ? { ...a, ...p } : a)));
+  const removeArea = (i) => setAreas(areas.filter((_, j) => j !== i));
+  const numOrNull = (v) => { const d = v.replace(/[^0-9]/g, ""); return d === "" ? null : parseInt(d, 10); };
+  const num = fieldBox + " tabular-nums";
+  return (
+    <>
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <p className={fieldLabel} style={{ color: "var(--text-3)" }}>Service Areas · {office}</p>
+        <button type="button" onClick={() => setEditingArea("new")}
+          className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+          <IconPlus size={12} />Add area
+        </button>
+      </div>
+      {areas.length === 0 ? (
+        <p className="rounded-lg border border-dashed px-3 py-2.5 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>{emptyText}</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_150px_36px] gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
+            <span>Area</span><span>Additional Base Fare ¥</span><span />
+          </div>
+          {areas.map((a, i) => (
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_150px_36px] items-center gap-2">
+              <button type="button" onClick={() => setEditingArea(i)}
+                className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <IconMapPin size={14} className="shrink-0 text-emerald-500" />
+                  <span className="truncate">{`${a.name || `Area ${i + 1}`} · ≤${a.radiusKm} km`}</span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>Edit</span>
+              </button>
+              <input type="text" inputMode="numeric" value={a.additionalFare ?? ""} onChange={(e) => patchArea(i, { additionalFare: numOrNull(e.target.value) })} placeholder="0"
+                className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+              <button type="button" title="Remove area" onClick={() => removeArea(i)} className="flex h-9 w-9 items-center justify-center rounded-lg text-red-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={15} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+    {editingArea !== null && (
+      <RangeEditorModal title="Service Area" subtitle={`${vehicleName} · ${office} office · ${subtitleNote}`}
+        nameLabel="Area Name" saveLabel="Set area" deleteLabel="Remove area"
+        defaultCenter={OFFICE_CENTER_LOCATIONS[office]}
+        range={editingArea === "new"
+          ? { name: `${office} area ${areas.length + 1}`, radiusKm: (areas[areas.length - 1]?.radiusKm ?? 15) + 15, center: null }
+          : areas[editingArea]}
+        onClose={() => setEditingArea(null)}
+        onSave={(updated) => {
+          if (editingArea === "new") setAreas([...areas, { ...updated, additionalFare: 0 }]);
+          else patchArea(editingArea, updated);
+          setEditingArea(null);
+        }}
+        onDelete={editingArea === "new" ? undefined : () => { removeArea(editingArea); setEditingArea(null); }} />
+    )}
+    </>
+  );
+}
 function serviceAreasFor(row, office) {
   const v = row.serviceAreas?.[office];
   return Array.isArray(v) ? v : v ? [v] : [];
 }
 function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
-  const [editingArea, setEditingArea] = useState(null); // index, or "new"
   /* Service areas are per office: each circle can add a base fare on top of this price for pick-ups inside it. */
   const areas = serviceAreasFor(draft, officeFilter);
   const setAreas = (list) => setDraft((prev) => ({ ...prev, serviceAreas: { ...(prev.serviceAreas ?? {}), [officeFilter]: list } }));
-  const patchArea = (i, p) => setAreas(areas.map((a, j) => (j === i ? { ...a, ...p } : a)));
-  const removeArea = (i) => setAreas(areas.filter((_, j) => j !== i));
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
   const num = fieldBox + " tabular-nums";
@@ -2582,54 +2678,7 @@ function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSav
         </div>
       </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
-      <div>
-        <div className="mb-1 flex items-center justify-between">
-          <p className={fieldLabel} style={{ color: "var(--text-3)" }}>Service Areas · {officeFilter}</p>
-          <button type="button" onClick={() => setEditingArea("new")}
-            className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
-            <IconPlus size={12} />Add area
-          </button>
-        </div>
-        {areas.length === 0 ? (
-          <p className="rounded-lg border border-dashed px-3 py-2.5 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>No areas — this price applies to every pick-up in this office.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-[minmax(0,1fr)_150px_36px] gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
-              <span>Area</span><span>Additional Base Fare ¥</span><span />
-            </div>
-            {areas.map((a, i) => (
-              <div key={i} className="grid grid-cols-[minmax(0,1fr)_150px_36px] items-center gap-2">
-                <button type="button" onClick={() => setEditingArea(i)}
-                  className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <IconMapPin size={14} className="shrink-0 text-emerald-500" />
-                    <span className="truncate">{`${a.name || `Area ${i + 1}`} · ≤${a.radiusKm} km`}</span>
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>Edit</span>
-                </button>
-                <input type="text" inputMode="numeric" value={a.additionalFare ?? ""} onChange={(e) => patchArea(i, { additionalFare: numOrNull(e.target.value) })} placeholder="0"
-                  className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-                <button type="button" title="Remove area" onClick={() => removeArea(i)} className="flex h-9 w-9 items-center justify-center rounded-lg text-red-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={15} /></button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      {editingArea !== null && (
-        <RangeEditorModal title="Service Area" subtitle={`${draft.vehicleName} · ${officeFilter} office · applies to this price only`}
-          nameLabel="Area Name" saveLabel="Set area" deleteLabel="Remove area"
-          defaultCenter={OFFICE_CENTER_LOCATIONS[officeFilter]}
-          range={editingArea === "new"
-            ? { name: `${officeFilter} area ${areas.length + 1}`, radiusKm: (areas[areas.length - 1]?.radiusKm ?? 15) + 15, center: null }
-            : areas[editingArea]}
-          onClose={() => setEditingArea(null)}
-          onSave={(updated) => {
-            if (editingArea === "new") setAreas([...areas, { ...updated, additionalFare: 0 }]);
-            else patchArea(editingArea, updated);
-            setEditingArea(null);
-          }}
-          onDelete={editingArea === "new" ? undefined : () => { removeArea(editingArea); setEditingArea(null); }} />
-      )}
+      <ServiceAreaListEditor areas={areas} onChange={setAreas} office={officeFilter} vehicleName={draft.vehicleName} />
       <Field label="Min. Fare (hrs)"><input type="text" inputMode="numeric" value={draft.minDurationHrs ?? ""} onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })} placeholder="0" className={`${num} max-w-[110px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
       <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border-soft)" }}><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Tiered Pricing</p><Toggle available={draft.tieredPricing !== false} onToggle={() => patch({ tieredPricing: !(draft.tieredPricing !== false) })} /></div>
       {draft.tieredPricing !== false ? (
