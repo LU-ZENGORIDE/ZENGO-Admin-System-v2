@@ -1971,10 +1971,10 @@ function AirportModal({ airport: initial, onClose, onSave, onDelete }) {
     </ModalShell>
   );
 }
-const PRICING_TABS = ["Tour Charters", "Airport Price", "Customized Price", "Offices", "Airport Management", "Vehicle Lineup"];
+const PRICING_TABS = ["Sightseeing Charter", "Airport Price", "Customized Price", "Offices", "Airport Management", "Vehicle Lineup"];
 
 function PricingCMSView() {
-  const [activeTab, setActiveTab] = useState("Tour Charters");
+  const [activeTab, setActiveTab] = useState("Sightseeing Charter");
   const [rows, setRows] = useState(SIGHTSEEING_PRICE_SEED);
   const { airportRows, setAirportRows } = useContext(AirportPricingCtx);
   const [customRows, setCustomRows] = useState(CUSTOMIZED_PRICE_SEED);
@@ -2032,7 +2032,7 @@ function PricingCMSView() {
         ))}
       </div>
 
-      {activeTab === "Tour Charters" ? (
+      {activeTab === "Sightseeing Charter" ? (
         <>
           <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={sightseeingCounts} />
           <div className="overflow-hidden rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
@@ -2158,7 +2158,7 @@ function PricingCMSView() {
                 </button>
                 <p className="pr-7 text-base font-bold" style={{ color: "var(--text-1)" }}>{s.office}</p>
                 <div className="mt-3 flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: "var(--border-soft)" }}>
-                  {[["Tour Charters", s.tourCharters], ["Airport Transfers", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
+                  {[["Sightseeing Charter", s.tourCharters], ["Airport Transfers", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span style={{ color: "var(--text-2)" }}>{label}</span>
                       <span className="font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>{stat.active}<span className="font-normal" style={{ color: "var(--text-3)" }}> / {stat.total} active</span></span>
