@@ -749,7 +749,7 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
       <div className="flex items-start justify-between gap-4 pr-9">
         <div>
           <p className="flex items-center gap-2 text-sm font-bold text-gray-800"><IconDollar size={16} className="text-gray-500" />Vehicle Pricing</p>
-          <p className="mt-1 text-xs text-gray-500">Airport category · {officeLocation} office · {airportDisplayName(airport)} · available vehicles only · synced with Pricing CMS › Airport Price</p>
+          <p className="mt-1 text-xs text-gray-500">Airport category · {officeLocation} office · {airportDisplayName(airport)} · available vehicles only · synced with Pricing CMS › Airport Transfer</p>
         </div>
         {pricing && !locked && <button type="button" onClick={() => onChange(null)} className="h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-gray-600 transition hover:bg-gray-50">Clear</button>}
       </div>
@@ -1971,7 +1971,7 @@ function AirportModal({ airport: initial, onClose, onSave, onDelete }) {
     </ModalShell>
   );
 }
-const PRICING_TABS = ["Sightseeing Charter", "Airport Price", "Customized Price", "Offices", "Airport Management", "Vehicle Lineup"];
+const PRICING_TABS = ["Sightseeing Charter", "Airport Transfer", "Customized Price", "Offices", "Airport Management", "Vehicle Lineup"];
 
 function PricingCMSView() {
   const [activeTab, setActiveTab] = useState("Sightseeing Charter");
@@ -2059,7 +2059,7 @@ function PricingCMSView() {
               onSave={(u) => { setRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingSightseeingRow(null); }} />
           )}
         </>
-      ) : activeTab === "Airport Price" ? (
+      ) : activeTab === "Airport Transfer" ? (
         <>
           <OfficeFilterChips officeFilter={officeFilter} onChange={setOfficeFilter} counts={airportCounts} />
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
@@ -2158,7 +2158,7 @@ function PricingCMSView() {
                 </button>
                 <p className="pr-7 text-base font-bold" style={{ color: "var(--text-1)" }}>{s.office}</p>
                 <div className="mt-3 flex flex-col gap-2.5 border-t pt-3" style={{ borderColor: "var(--border-soft)" }}>
-                  {[["Sightseeing Charter", s.tourCharters], ["Airport Transfers", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
+                  {[["Sightseeing Charter", s.tourCharters], ["Airport Transfer", s.airportTransfers], ["Customized Price", s.customizedPrice]].map(([label, stat]) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span style={{ color: "var(--text-2)" }}>{label}</span>
                       <span className="font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>{stat.active}<span className="font-normal" style={{ color: "var(--text-3)" }}> / {stat.total} active</span></span>
