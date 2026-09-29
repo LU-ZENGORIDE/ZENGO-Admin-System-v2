@@ -759,7 +759,7 @@ function loadAirportRowsForOfficeAirport(office, airport, sourceRows = AIRPORT_P
   return sourceRows.filter((row) => (row.offices || []).includes(office) && row.available).flatMap((row) => {
     const leg = row.legs.find((l) => l.airport === airport);
     if (!leg) return [];
-    return [{ vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: leg.ranges?.[0]?.fixedFee ?? 0, ranges: leg.ranges ?? [], custom: false, customPrice: "" }];
+    return [{ vehicleType: row.vehicleType, vehicleName: row.vehicleName, owner: row.owner, fixedFee: legBasicFare(leg), custom: false, customPrice: "" }];
   });
 }
 function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange, locked = false }) {
@@ -797,22 +797,14 @@ function AirportVehiclePricingTable({ officeLocation, airport, pricing, onChange
         <div className="mt-3.5 overflow-x-auto rounded-[10px] border border-gray-200">
           <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
-              {["Vehicle Name","Owner","Fixed Ranges"].map((c) => <th key={c} className="whitespace-nowrap px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{c}</th>)}
+              {["Vehicle Name","Owner","Basic Fare ¥"].map((c, ci) => <th key={c} className={`whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 ${ci === 2 ? "text-right" : "text-left"}`}>{c}</th>)}
             </tr></thead>
             <tbody>
               {activeRows.map((row) => (
                 <tr key={pricingRowKey(row)} className="border-b border-gray-100 last:border-b-0">
                   <td className="whitespace-nowrap px-2 py-[9px] font-medium text-gray-900">{row.vehicleName}</td>
                   <td className="px-2 py-[9px] text-gray-600">{row.owner}</td>
-                  <td className="px-2 py-[9px] text-gray-600">
-                    {row.ranges.length === 0 ? <span className="text-gray-300">—</span> : (
-                      <div className="flex flex-wrap gap-1">
-                        {row.ranges.map((r, ri) => (
-                          <span key={ri} className="whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] tabular-nums text-gray-600">{r.name || `Range ${ri + 1}`} · ≤{r.radiusKm}km · {formatPrice(r.fixedFee)}</span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
+                  <td className="px-2 py-[9px] text-right tabular-nums text-gray-600">{formatPrice(row.fixedFee)}</td>
                 </tr>
               ))}
             </tbody>
@@ -2200,9 +2192,7 @@ function PricingCMSView() {
                           {officeLegs.map((leg) => (
                             <div key={leg.airport} className="flex flex-wrap items-center gap-1.5 text-xs">
                               <span className="whitespace-nowrap rounded-md border px-2 py-0.5 font-medium" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-2)" }}>{AIRPORT_CODES[leg.airport] || leg.airport}</span>
-                              {(leg.ranges ?? []).map((r, ri) => (
-                                <span key={ri} className="whitespace-nowrap rounded-md border px-1.5 py-0.5 tabular-nums" style={{ borderColor: "var(--border-soft)", color: "var(--text-2)" }}>{r.name || `Range ${ri + 1}`} {formatPrice(r.fixedFee)}</span>
-                              ))}
+                              <span className="whitespace-nowrap tabular-nums" style={{ color: "var(--text-2)" }}>Basic Fare {formatPrice(legBasicFare(leg))}</span>
                             </div>
                           ))}
                         </div>
@@ -2596,10 +2586,13 @@ function RangeMapModal({ airport, ranges, onClose, title = "Range Map", anchor, 
     </div>
   );
 }
+/* Airport Transfer pricing is one Basic Fare per airport; distance-based surcharges now live in Service Areas.
+ * Older rows stored per-range fees, so fall back to the first range's fee. */
+function legBasicFare(leg) {
+  return leg?.basicFare ?? leg?.ranges?.[0]?.fixedFee ?? 0;
+}
 function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
-  const [editingRange, setEditingRange] = useState(null);
-  const [rangeMapAirport, setRangeMapAirport] = useState(null);
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
   const availableAirports = OFFICE_AIRPORTS[officeFilter] || [];
   /* Which airports an office serves is owned by OFFICE_AIRPORTS, not chosen
@@ -2611,18 +2604,12 @@ function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }
       const existing = new Set(prev.legs.map((l) => l.airport));
       const missing = availableAirports.filter((a) => !existing.has(a));
       if (missing.length === 0) return prev;
-      return { ...prev, legs: [...prev.legs, ...missing.map((airport) => ({ airport, ranges: [{ name: "Standard", radiusKm: 15, fixedFee: 0, center: null }] }))] };
+      return { ...prev, legs: [...prev.legs, ...missing.map((airport) => ({ airport, basicFare: 0 }))] };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const patchLeg = (airport, fn) => setDraft((prev) => ({ ...prev, legs: prev.legs.map((l) => l.airport === airport ? fn(l) : l) }));
-  const addRange = (airport) => patchLeg(airport, (l) => {
-    const lastRadius = l.ranges[l.ranges.length - 1]?.radiusKm ?? 0;
-    return { ...l, ranges: [...l.ranges, { name: "New range", radiusKm: lastRadius + 15, fixedFee: 0, center: null }] };
-  });
-  const setFee = (airport, index, fee) => patchLeg(airport, (l) => ({ ...l, ranges: l.ranges.map((r, i) => i === index ? { ...r, fixedFee: fee } : r) }));
-  const updateRange = (airport, index, updated) => patchLeg(airport, (l) => ({ ...l, ranges: l.ranges.map((r, i) => i === index ? { ...r, ...updated } : r) }));
-  const deleteRange = (airport, index) => patchLeg(airport, (l) => ({ ...l, ranges: l.ranges.filter((_, i) => i !== index) }));
+  const setBasicFare = (airport, fee) => patchLeg(airport, (l) => ({ ...l, basicFare: fee }));
 
   return (
     <ModalShell title="Edit Airport Transfer" onClose={onClose}
@@ -2646,55 +2633,18 @@ function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }
           <div className="flex flex-col gap-3">
             {draft.legs.filter((l) => availableAirports.includes(l.airport)).map((leg) => (
               <div key={leg.airport} className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{leg.airport} <span className="text-xs font-normal" style={{ color: "var(--text-3)" }}>({AIRPORT_CODES[leg.airport]})</span></p>
-                  <div className="flex items-center gap-1.5">
-                    <button type="button" onClick={() => setRangeMapAirport(leg.airport)}
-                      className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
-                      <IconMap size={12} />Range map
-                    </button>
-                    <button type="button" onClick={() => addRange(leg.airport)}
-                      className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
-                      <IconPlus size={12} />Add range
-                    </button>
-                  </div>
-                </div>
-                {leg.ranges.length > 0 && (
-                  <div className="mt-2.5 grid grid-cols-[1fr_110px_120px] gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
-                    <span>Fixed Range Name</span><span>Fixed Fee ¥</span><span>Fix Rate Range</span>
-                  </div>
-                )}
-                <div className="mt-1 flex flex-col gap-1.5">
-                  {leg.ranges.map((r, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_110px_120px] items-center gap-2">
-                      <button type="button" onClick={() => setEditingRange({ airport: leg.airport, index: i })}
-                        className="truncate rounded-lg border px-3 py-1.5 text-left text-sm outline-none transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)", color: "var(--text-1)" }}>
-                        {r.name || "Unnamed range"}
-                      </button>
-                      <input type="number" min="0" value={r.fixedFee} onChange={(e) => setFee(leg.airport, i, parseInt(e.target.value,10)||0)}
-                        className="w-full min-w-0 rounded-lg border px-2 py-1.5 text-sm tabular-nums outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-                      <button type="button" onClick={() => setEditingRange({ airport: leg.airport, index: i })}
-                        className="flex items-center justify-between gap-1 rounded-lg border px-2.5 py-1.5 text-sm outline-none transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
-                        {r.radiusKm} km<IconMapPin size={13} className="shrink-0" style={{ color: "var(--text-3)" }} />
-                      </button>
-                    </div>
-                  ))}
-                  {leg.ranges.length === 0 && <p className="rounded-lg border border-dashed px-3 py-2.5 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>No ranges configured — add one.</p>}
+                  <label className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>Basic Fare ¥</span>
+                    <input type="number" min="0" value={legBasicFare(leg)} onChange={(e) => setBasicFare(leg.airport, parseInt(e.target.value, 10) || 0)}
+                      className="w-32 rounded-lg border px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                  </label>
                 </div>
               </div>
             ))}
           </div>
         </Field>
-      )}
-      {editingRange && (
-        <RangeEditorModal airport={editingRange.airport}
-          range={draft.legs.find((l) => l.airport === editingRange.airport).ranges[editingRange.index]}
-          onClose={() => setEditingRange(null)}
-          onSave={(updated) => { updateRange(editingRange.airport, editingRange.index, updated); setEditingRange(null); }}
-          onDelete={() => { deleteRange(editingRange.airport, editingRange.index); setEditingRange(null); }} />
-      )}
-      {rangeMapAirport && (
-        <RangeMapModal airport={rangeMapAirport} ranges={draft.legs.find((l) => l.airport === rangeMapAirport)?.ranges ?? []} onClose={() => setRangeMapAirport(null)} />
       )}
     </ModalShell>
   );
