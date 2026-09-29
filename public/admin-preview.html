@@ -758,7 +758,18 @@ function VehicleAreasModal({ vehicleName, office, tabLabel, cmsAreas, selected, 
 }
 /* Pricing CMS office-level service areas, shared app-wide: { [pricing tab]: { [office]: area[] } }.
  * Catalog vehicle pricing links to these by id (plus a per-vehicle additional base fare). */
-const ServiceAreasCtx = createContext({ tabAreas: {}, setTabAreas: () => {} });
+/* Preset areas so every office starts with a usable set: a free city core plus paid outer rings. */
+const SERVICE_AREA_TEMPLATE = [
+  { key: "core", name: "City Center", radiusKm: 15, additionalFare: 0 },
+  { key: "suburbs", name: "Suburbs", radiusKm: 30, additionalFare: 3000 },
+  { key: "outer", name: "Outer Area", radiusKm: 50, additionalFare: 6000 },
+];
+const SERVICE_AREA_SEED = Object.fromEntries(["Sightseeing Charter", "Airport Transfer", "Customized Route"].map((tab) => [tab,
+  Object.fromEntries(OFFICE_LOCATIONS.map((office) => [office, SERVICE_AREA_TEMPLATE.map((t) => ({
+    id: `seed-${slugifyTripName(tab)}-${office.toLowerCase()}-${t.key}`, name: t.name, radiusKm: t.radiusKm, additionalFare: t.additionalFare, center: null,
+  }))])),
+]));
+const ServiceAreasCtx = createContext({ tabAreas: SERVICE_AREA_SEED, setTabAreas: () => {} });
 function resolveVehicleAreas(rowAreas = [], cmsAreas = []) {
   return rowAreas.map((ra) => {
     if (!ra.areaId) return ra;
@@ -3978,7 +3989,7 @@ function AdminShell() {
   const [debugMode, setDebugMode] = useState(false);
   const [airportRows, setAirportRows] = useState(AIRPORT_PRICE_SEED);
   const airportPricingValue = useMemo(() => ({ airportRows, setAirportRows }), [airportRows]);
-  const [tabAreas, setTabAreas] = useState({});
+  const [tabAreas, setTabAreas] = useState(SERVICE_AREA_SEED);
   const serviceAreasValue = useMemo(() => ({ tabAreas, setTabAreas }), [tabAreas]);
   const [bookingPreviewTour, setBookingPreviewTour] = useState(null);
   const bookingItinerary = useMemo(() => (bookingPreviewTour ? buildItineraryFromTour(bookingPreviewTour) : null), [bookingPreviewTour]);
