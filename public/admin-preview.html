@@ -1973,12 +1973,86 @@ function AirportModal({ airport: initial, onClose, onSave, onDelete }) {
 }
 const PRICING_TABS = ["Sightseeing Charter", "Airport Transfer", "Customized Route", "Offices", "Airport Management", "Vehicle Lineup"];
 
+/* Pricing CMS: office-level service areas for a pricing tab (add / edit / delete / radius, plus an overview map). */
+function ServiceAreaManager({ tabLabel, office, areas, onChange }) {
+  const [editing, setEditing] = useState(null); // index or "new"
+  const [showMap, setShowMap] = useState(false);
+  const center = OFFICE_CENTER_LOCATIONS[office];
+  const save = (updated) => {
+    onChange(editing === "new" ? [...areas, updated] : areas.map((a, i) => (i === editing ? { ...a, ...updated } : a)));
+    setEditing(null);
+  };
+  const remove = (i) => onChange(areas.filter((_, j) => j !== i));
+  return (
+    <div className="mt-4 rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--border-soft)" }}>
+        <div>
+          <p className="flex items-center gap-2 text-sm font-bold" style={{ color: "var(--text-1)" }}><IconMapPin size={16} className="text-emerald-500" />Service Areas · {office}</p>
+          <p className="mt-0.5 text-xs" style={{ color: "var(--text-3)" }}>Areas where {tabLabel} pricing applies for the {office} office.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowMap(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+            <IconMap size={15} />Map overview
+          </button>
+          <button type="button" onClick={() => setEditing("new")}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#FACC15] px-3.5 text-sm font-semibold text-[#121621] transition hover:bg-[#eab308]">
+            <IconPlus size={15} />Add area
+          </button>
+        </div>
+      </div>
+      {areas.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm" style={{ color: "var(--text-3)" }}>No service areas for {office} yet — add one to define where this pricing applies.</p>
+      ) : (
+        <table className="w-full text-left text-sm">
+          <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
+            {["Area Name", "Center", "Radius", "Action"].map((c) => <th key={c} className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>{c}</th>)}
+          </tr></thead>
+          <tbody>
+            {areas.map((a, i) => (
+              <tr key={i} onClick={() => setEditing(i)} className="cursor-pointer border-b transition last:border-b-0 hover:bg-black/[0.03]" style={{ borderColor: "var(--border-soft)" }}>
+                <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>
+                  <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: RANGE_MAP_COLORS[i % RANGE_MAP_COLORS.length] }} />{a.name || `Area ${i + 1}`}</span>
+                </td>
+                <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{(a.center ?? center)?.title ?? "—"}</td>
+                <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>≤{a.radiusKm} km</td>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1">
+                    <button type="button" title="Edit area" onClick={() => setEditing(i)} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button>
+                    <button type="button" title="Delete area" onClick={() => remove(i)} className="rounded p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={16} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {editing !== null && (
+        <RangeEditorModal title="Service Area" subtitle={`${tabLabel} · ${office} office`}
+          nameLabel="Area Name" saveLabel="Set area" deleteLabel="Delete area"
+          defaultCenter={center}
+          range={editing === "new" ? { name: `${office} area ${areas.length + 1}`, radiusKm: (areas[areas.length - 1]?.radiusKm ?? 15) + 15, center: null } : areas[editing]}
+          onClose={() => setEditing(null)} onSave={save}
+          onDelete={editing === "new" ? undefined : () => { remove(editing); setEditing(null); }} />
+      )}
+      {showMap && (
+        <RangeMapModal title="Service Area Map" subtitleLabel={`${tabLabel} · ${office}`} anchor={center} ranges={areas}
+          showFee={false} itemLabel="area" onClose={() => setShowMap(false)} />
+      )}
+    </div>
+  );
+}
 function PricingCMSView() {
   const [activeTab, setActiveTab] = useState("Sightseeing Charter");
   const [rows, setRows] = useState(SIGHTSEEING_PRICE_SEED);
   const { airportRows, setAirportRows } = useContext(AirportPricingCtx);
   const [customRows, setCustomRows] = useState(CUSTOMIZED_PRICE_SEED);
   const [officeFilter, setOfficeFilter] = useState("Tokyo");
+  /* { [tab]: { [office]: area[] } } */
+  const [tabAreas, setTabAreas] = useState({});
+  const areasFor = (tab) => tabAreas[tab]?.[officeFilter] ?? [];
+  const setAreasFor = (tab) => (list) => setTabAreas((prev) => ({ ...prev, [tab]: { ...(prev[tab] ?? {}), [officeFilter]: list } }));
+  const areaManager = (tab) => <ServiceAreaManager tabLabel={tab} office={officeFilter} areas={areasFor(tab)} onChange={setAreasFor(tab)} />;
   const [editingAirportRow, setEditingAirportRow] = useState(null);
   const [editingSightseeingRow, setEditingSightseeingRow] = useState(null);
   const [editingCustomRow, setEditingCustomRow] = useState(null);
@@ -2054,6 +2128,7 @@ function PricingCMSView() {
               </tbody>
             </table>
           </div>
+          {areaManager("Sightseeing Charter")}
           {editingSightseeingRow && (
             <SightseeingPriceModal row={editingSightseeingRow} officeFilter={officeFilter} vehicleLineup={vehicleLineup} onClose={() => setEditingSightseeingRow(null)}
               onSave={(u) => { setRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingSightseeingRow(null); }} />
@@ -2096,6 +2171,7 @@ function PricingCMSView() {
               </tbody>
             </table>
           </div>
+          {areaManager("Airport Transfer")}
           {editingAirportRow && (
             <AirportPriceModal row={editingAirportRow} officeFilter={officeFilter} vehicleLineup={vehicleLineup} onClose={() => setEditingAirportRow(null)}
               onSave={(u) => { setAirportRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingAirportRow(null); }} />
@@ -2136,6 +2212,7 @@ function PricingCMSView() {
               </tbody>
             </table>
           </div>
+          {areaManager("Customized Route")}
           {editingCustomRow && (
             <CustomizedPriceModal row={editingCustomRow} officeFilter={officeFilter} vehicleLineup={vehicleLineup} onClose={() => setEditingCustomRow(null)}
               onSave={(u) => { setCustomRows((p) => p.map((r) => r.id === u.id ? u : r)); setEditingCustomRow(null); }} />
@@ -2408,8 +2485,8 @@ function RangeEditorModal({ airport, range, onSave, onDelete, onClose, title = "
   );
 }
 const RANGE_MAP_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
-function RangeMapModal({ airport, ranges, onClose }) {
-  const airportLoc = AIRPORT_MAP_LOCATIONS[airport] ?? { title: airport, address: "" };
+function RangeMapModal({ airport, ranges, onClose, title = "Range Map", anchor, subtitleLabel, showFee = true, itemLabel = "range" }) {
+  const airportLoc = anchor ?? AIRPORT_MAP_LOCATIONS[airport] ?? { title: airport, address: "" };
   const maxRadius = Math.max(1, ...ranges.map((r) => r.radiusKm || 0));
   /* Largest range fills ~84% of the map height; other ranges scale linearly. Custom centers get a
    * deterministic offset from the airport pin since the prototype has no real coordinates. */
@@ -2425,8 +2502,8 @@ function RangeMapModal({ airport, ranges, onClose }) {
       <div role="dialog" aria-modal="true" className="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
           <div>
-            <p className="text-base font-bold text-gray-900">Range Map</p>
-            <p className="mt-0.5 text-xs text-gray-500">{airportDisplayName(airport)} · {ranges.length} range{ranges.length === 1 ? "" : "s"} · schematic, not to scale</p>
+            <p className="text-base font-bold text-gray-900">{title}</p>
+            <p className="mt-0.5 text-xs text-gray-500">{subtitleLabel ?? airportDisplayName(airport)} · {ranges.length} {itemLabel}{ranges.length === 1 ? "" : "s"} · schematic, not to scale</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><IconX size={16} /></button>
         </div>
@@ -2441,27 +2518,27 @@ function RangeMapModal({ airport, ranges, onClose }) {
               const { dx, dy } = offsetFor(r.center);
               const size = `${Math.max(6, (r.radiusKm / maxRadius) * 84)}%`;
               return (
-                <div key={r.index} className="absolute rounded-full border-2" title={`${r.name} · ≤${r.radiusKm}km · ${formatPrice(r.fixedFee)}`}
+                <div key={r.index} className="absolute rounded-full border-2" title={`${r.name} · ≤${r.radiusKm}km${showFee ? ` · ${formatPrice(r.fixedFee)}` : ""}`}
                   style={{ left: `calc(50% + ${dx}%)`, top: `calc(50% + ${dy}%)`, height: size, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)", borderColor: r.color, background: `${r.color}1f` }}>
-                  <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow" style={{ background: r.color }}>{r.name || `Range ${r.index + 1}`} · {r.radiusKm}km</span>
+                  <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow" style={{ background: r.color }}>{r.name || `${itemLabel === "area" ? "Area" : "Range"} ${r.index + 1}`} · {r.radiusKm}km</span>
                 </div>
               );
             })}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
-              <IconPlane size={22} className="text-gray-900 drop-shadow" />
+              {airport ? <IconPlane size={22} className="text-gray-900 drop-shadow" /> : <IconMapPin size={24} className="text-red-500 drop-shadow" style={{ fill: "currentColor" }} />}
             </div>
             <span className="absolute left-3 top-3 rounded-md bg-white/90 px-2 py-1 text-[11px] font-semibold text-gray-700 shadow">{airportLoc.title}</span>
-            {ranges.length === 0 && <div className="absolute inset-0 flex items-center justify-center"><span className="rounded-lg bg-white/90 px-3 py-2 text-xs text-gray-500 shadow">No ranges configured for this airport.</span></div>}
+            {ranges.length === 0 && <div className="absolute inset-0 flex items-center justify-center"><span className="rounded-lg bg-white/90 px-3 py-2 text-xs text-gray-500 shadow">{itemLabel === "area" ? "No service areas yet." : "No ranges configured for this airport."}</span></div>}
           </div>
           <div className="border-t border-gray-100 p-4 md:border-l md:border-t-0">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Ranges</p>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">{itemLabel === "area" ? "Areas" : "Ranges"}</p>
             <div className="flex flex-col gap-2">
               {ranges.map((r, i) => (
                 <div key={i} className="flex items-start gap-2.5 rounded-lg border border-gray-200 px-3 py-2">
                   <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: RANGE_MAP_COLORS[i % RANGE_MAP_COLORS.length] }} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-900">{r.name || `Range ${i + 1}`}</p>
-                    <p className="text-xs tabular-nums text-gray-500">≤{r.radiusKm} km · {formatPrice(r.fixedFee)}</p>
+                    <p className="truncate text-sm font-semibold text-gray-900">{r.name || `${itemLabel === "area" ? "Area" : "Range"} ${i + 1}`}</p>
+                    <p className="text-xs tabular-nums text-gray-500">≤{r.radiusKm} km{showFee ? ` · ${formatPrice(r.fixedFee)}` : ""}</p>
                     <p className="truncate text-[11px] text-gray-400">Center: {(r.center ?? airportLoc).title}</p>
                   </div>
                 </div>
