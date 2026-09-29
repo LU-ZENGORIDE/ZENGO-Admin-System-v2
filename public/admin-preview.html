@@ -2073,7 +2073,7 @@ function PricingCMSView() {
           <div className="overflow-x-auto rounded-xl border shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
             <table className="w-full min-w-[1200px] text-left text-sm">
               <thead><tr className="border-b" style={{ borderColor: "var(--border-soft)", background: "var(--bg-subtle)" }}>
-                {["Vehicle Name","Owner","Available","Service Area","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Dispatch Km","Return Km","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
+                {["Vehicle Name","Owner","Available","Service Area","Min. Fare","1-4h","4-7h","7-10h","Fixed Rate","Overtime","Action"].map((c) => <th key={c} className={`${th} whitespace-nowrap`} style={{ color: "var(--text-3)" }}>{c}</th>)}
               </tr></thead>
               <tbody>
                 {filteredCustom.map((row) => (
@@ -2096,8 +2096,6 @@ function PricingCMSView() {
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{row.tieredPricing === false ? <span style={{ color: "var(--text-3)" }}>—</span> : formatPrice(row.unit7to10)}</td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-1)" }}>{!row.fixedRateAvailable ? <span style={{ color: "var(--text-3)" }}>—</span> : formatPrice(row.fixedRate)}</td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.overtimeCharge)}</td>
-                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{row.dispatchFee ? `${formatPrice(row.dispatchFee)}/${row.dispatchFreeKm}km` : "—"}</td>
-                    <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{row.returnFee ? `${formatPrice(row.returnFee)}/${row.returnFreeKm}km` : "—"}</td>
                     <td className="px-4 py-3"><button type="button" onClick={(e) => { e.stopPropagation(); setEditingCustomRow(row); }} className="rounded p-1.5 text-gray-400 transition hover:bg-black/5 hover:text-blue-600"><IconPencil size={16} /></button></td>
                   </tr>
                 ))}
@@ -2656,35 +2654,6 @@ function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSav
         </div>
       )}
       <Field label="Overtime Charge ¥ / 30min"><input type="text" inputMode="numeric" value={draft.overtimeCharge ?? ""} onChange={(e) => patch({ overtimeCharge: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
-      <div className="grid grid-cols-2 gap-3">
-        {[["dispatchFee","dispatchFreeKm","Dispatch Free Km"],["returnFee","returnFreeKm","Return Free Km"]].map(([feeKey,kmKey,label]) => (
-          <Field key={feeKey} label={label}>
-            <div className="flex items-center gap-1.5">
-              <input type="text" inputMode="numeric" value={draft[feeKey] ?? ""} onChange={(e) => patch({ [feeKey]: numOrNull(e.target.value) })} placeholder="2000" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-              <span style={{ color: "var(--text-3)" }}>/</span>
-              <input type="text" inputMode="numeric" value={draft[kmKey] ?? ""} onChange={(e) => patch({ [kmKey]: numOrNull(e.target.value) })} placeholder="20" className={`${num} max-w-[80px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-              <span className="text-xs" style={{ color: "var(--text-3)" }}>km</span>
-            </div>
-          </Field>
-        ))}
-      </div>
-      <div className="border-t pt-4" style={{ borderColor: "var(--border-soft)" }}>
-        <p className={fieldLabel} style={{ color: "var(--text-3)" }}>Long Distance Charge</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Max Distance">
-            <div className="flex items-center gap-1.5">
-              <input type="text" inputMode="numeric" value={draft.longDistanceMaxKm ?? ""} onChange={(e) => patch({ longDistanceMaxKm: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-              <span className="text-xs" style={{ color: "var(--text-3)" }}>km</span>
-            </div>
-          </Field>
-          <Field label="Overcharge Rate ¥">
-            <div className="flex items-center gap-1.5">
-              <input type="text" inputMode="numeric" value={draft.longDistanceOverchargeRate ?? ""} onChange={(e) => patch({ longDistanceOverchargeRate: numOrNull(e.target.value) })} placeholder="0" className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
-              <span className="text-xs" style={{ color: "var(--text-3)" }}>/km</span>
-            </div>
-          </Field>
-        </div>
-      </div>
     </ModalShell>
   );
 }
