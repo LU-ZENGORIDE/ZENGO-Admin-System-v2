@@ -1141,7 +1141,6 @@ export default function TourTemplateModal({
                         size="compact"
                         label="Pick-up Spot"
                         value={wp.pickupMapLocation ?? null}
-                        radiusEditable={draft.serviceType === "Fixed Route" || draft.serviceType === "Sightseeing Charter"}
                         onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })}
                       />
                       <div aria-hidden="true" className="hidden sm:block" />

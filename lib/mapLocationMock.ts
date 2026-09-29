@@ -1,7 +1,6 @@
 export interface MapLocation {
   title: string;
   address: string;
-  radiusKm?: number;
 }
 
 export const MAP_LOCATION_SUGGESTIONS: MapLocation[] = [

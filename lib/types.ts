@@ -39,7 +39,6 @@ export interface AirportVehiclePricing {
 export interface MapLocationRef {
   title: string;
   address: string;
-  radiusKm?: number;
 }
 
 export interface WaypointStopover {

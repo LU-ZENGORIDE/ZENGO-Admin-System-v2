@@ -448,7 +448,7 @@ const MAP_PICKER_TRIGGER_STYLES = {
   dark: { empty: "border-white/10 bg-white/5 text-white/25 hover:border-white/20 hover:bg-white/10 hover:text-white/45", filled: "border-emerald-400 bg-emerald-500/90 text-white hover:bg-emerald-500" },
   light: { empty: "border-gray-200 bg-gray-50 text-gray-300 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-500", filled: "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600" },
 };
-function MapLocationPicker({ value, onChange, label, theme = "dark", size = "default", radiusEditable = false, placeholder, muted = false }) {
+function MapLocationPicker({ value, onChange, label, theme = "dark", size = "default", placeholder, muted = false }) {
   const [open, setOpen] = useState(false);
   const styles = MAP_PICKER_TRIGGER_STYLES[theme];
   const compact = size === "compact";
@@ -472,21 +472,19 @@ function MapLocationPicker({ value, onChange, label, theme = "dark", size = "def
         </button>
       )}
       {open && (
-        <MapLocationModal label={label} initial={muted ? null : value} hintTitle={muted ? value?.title : null} theme={theme} radiusEditable={radiusEditable} onClose={() => setOpen(false)}
+        <MapLocationModal label={label} initial={muted ? null : value} hintTitle={muted ? value?.title : null} theme={theme} onClose={() => setOpen(false)}
           onSave={(loc) => { onChange(loc); setOpen(false); }} />
       )}
     </>
   );
 }
-function MapLocationModal({ label, initial, hintTitle = null, theme, radiusEditable = false, onClose, onSave }) {
+function MapLocationModal({ label, initial, hintTitle = null, theme, onClose, onSave }) {
   const [query, setQuery] = useState(initial?.title ?? "");
   const [selected, setSelected] = useState(initial);
-  const [radiusKm, setRadiusKm] = useState(initial?.radiusKm ?? 10);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestions = searchMapLocations(query);
   const isLight = theme === "light";
   const displayLocation = selected ?? { title: query || hintTitle || "Search for a location", address: "Select an address from the suggestions below" };
-  const circleSize = Math.max(50, Math.min(160, radiusKm * 2.6));
   /* Pin position as % of the map box; click or drag anywhere on the map to place it by hand. */
   const [pin, setPin] = useState(initial?.pin ?? { x: 50, y: 50 });
   const [pinMoved, setPinMoved] = useState(false);
@@ -501,7 +499,7 @@ function MapLocationModal({ label, initial, hintTitle = null, theme, radiusEdita
   const handleSave = () => {
     if (!canSave) return;
     const base = selected ?? { title: query.trim() || "Dropped pin", address: `Custom pin · ${pin.x.toFixed(0)}%, ${pin.y.toFixed(0)}% on map` };
-    onSave({ ...base, pin, ...(radiusEditable ? { radiusKm } : {}) });
+    onSave({ ...base, pin });
   };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
@@ -547,9 +545,6 @@ function MapLocationModal({ label, initial, hintTitle = null, theme, radiusEdita
             <div className="pointer-events-none absolute inset-y-0 right-0" style={{ width: "30%", background: "linear-gradient(200deg, rgba(147,197,253,0.6), rgba(147,197,253,0.15) 70%)", clipPath: "polygon(35% 0, 100% 0, 100% 100%, 0 100%)" }} />
             <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 80 Q35 55 55 45 T100 10" stroke="#FACC15" strokeWidth="1.4" fill="none" /><path d="M0 25 Q30 40 60 65 T100 92" stroke="#cbd5e1" strokeWidth="1" fill="none" /><path d="M20 0 L28 100" stroke="#e2e8f0" strokeWidth="1" fill="none" /></svg>
             <div className={`pointer-events-none absolute inset-0 ${isLight ? "bg-white/10" : "bg-slate-900/30"}`} />
-            {radiusEditable && (selected || pinMoved) && (
-              <div className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-[#FACC15]/80 bg-[#FACC15]/10" style={{ left: `${pin.x}%`, top: `${pin.y}%`, width: circleSize, height: circleSize }} />
-            )}
             <div className="pointer-events-none absolute -translate-x-1/2 -translate-y-full" style={{ left: `${pin.x}%`, top: `${pin.y}%` }}>
               <IconMapPin size={40} className="text-red-500 drop-shadow-lg" style={{ fill: "currentColor" }} />
             </div>
@@ -563,17 +558,6 @@ function MapLocationModal({ label, initial, hintTitle = null, theme, radiusEdita
             <p className={`mt-0.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>{displayLocation.address}</p>
             {pinMoved && <p className={`mt-1 text-[11px] font-medium ${isLight ? "text-emerald-600" : "text-emerald-300"}`}>Pin adjusted manually</p>}
           </div>
-          {radiusEditable && (selected || pinMoved) && (
-            <div className={`mt-3 rounded-lg px-3 py-2 ${isLight ? "bg-gray-50" : "bg-white/5"}`}>
-              <label className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide ${isLight ? "text-gray-400" : "text-white/40"}`}>Effective Radius</label>
-              <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 ${isLight ? "border-gray-200 bg-white" : "border-white/15 bg-white/5"}`}>
-                <input type="number" min="0" value={radiusKm} onChange={(e) => setRadiusKm(parseInt(e.target.value, 10) || 0)}
-                  className={`w-full min-w-0 bg-transparent text-sm tabular-nums outline-none ${isLight ? "text-gray-900" : "text-white"}`} />
-                <span className={`shrink-0 text-xs ${isLight ? "text-gray-400" : "text-white/40"}`}>km</span>
-              </div>
-              <p className={`mt-1.5 text-xs ${isLight ? "text-gray-500" : "text-white/45"}`}>Pickups within this radius of the pin are treated as this pick-up spot.</p>
-            </div>
-          )}
         </div>
         <div className={`grid grid-cols-2 gap-3 border-t p-4 ${isLight ? "border-gray-100" : "border-white/10"}`}>
           <button type="button" onClick={onClose} className={`rounded-xl border py-3 text-sm font-medium transition ${isLight ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50" : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10"}`}>Cancel</button>
@@ -1779,7 +1763,7 @@ function TourTemplateModal({ tour, isNew, onClose, onSave, onToggleStatus, onDel
                           </div>
                         </DebugField>
                       )}
-                      <MapLocationPicker theme="light" size="compact" label="Pick-up Spot" value={wp.pickupMapLocation ?? null} radiusEditable={draft.serviceType === "Fixed Route" || draft.serviceType === "Sightseeing Charter"} onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })} />
+                      <MapLocationPicker theme="light" size="compact" label="Pick-up Spot" value={wp.pickupMapLocation ?? null} onChange={(loc) => updateRouteCopy({ pickupMapLocation: loc })} />
                       <div aria-hidden="true" className="hidden sm:block" />
                       {draft.serviceType === "Sightseeing Charter" && (
                       <div className="col-span-full">
