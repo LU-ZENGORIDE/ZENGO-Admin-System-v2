@@ -2082,8 +2082,12 @@ function PricingCMSView() {
                     <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>{ownerForOffice(vehicleLineup, row.vehicleType, row.vehicleName, officeFilter) ?? row.owner}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><Toggle available={row.available} onToggle={() => setCustomRows((p) => p.map((r) => r.id === row.id ? { ...r, available: !r.available } : r))} /></td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: "var(--text-2)" }}>
-                      {row.serviceAreas?.[officeFilter]
-                        ? <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 tabular-nums" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}><IconMapPin size={11} className="text-emerald-500" />{row.serviceAreas[officeFilter].center?.title ?? "—"} · ≤{row.serviceAreas[officeFilter].radiusKm}km</span>
+                      {serviceAreasFor(row, officeFilter).length
+                        ? <div className="flex flex-col gap-1">{serviceAreasFor(row, officeFilter).map((a, i) => (
+                            <span key={i} className="inline-flex w-fit items-center gap-1 rounded-md border px-2 py-0.5 tabular-nums" style={{ borderColor: "var(--border)", background: "var(--bg-subtle)" }}>
+                              <IconMapPin size={11} className="text-emerald-500" />{a.name || `Area ${i + 1}`} · ≤{a.radiusKm}km{a.additionalFare ? ` · +${formatPrice(a.additionalFare)}` : ""}
+                            </span>
+                          ))}</div>
                         : <span style={{ color: "var(--text-3)" }}>All areas</span>}
                     </td>
                     <td className="px-4 py-3 tabular-nums" style={{ color: "var(--text-2)" }}>{formatPrice(row.minDurationHrs)}</td>
@@ -2541,12 +2545,18 @@ function AirportPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }
   );
 }
 
+function serviceAreasFor(row, office) {
+  const v = row.serviceAreas?.[office];
+  return Array.isArray(v) ? v : v ? [v] : [];
+}
 function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSave }) {
   const [draft, setDraft] = useState(row);
-  const [editingArea, setEditingArea] = useState(false);
-  /* Service area is per office: the price applies only to pick-ups inside this circle for the filtered office. */
-  const area = draft.serviceAreas?.[officeFilter] ?? null;
-  const setArea = (a) => setDraft((prev) => ({ ...prev, serviceAreas: { ...(prev.serviceAreas ?? {}), [officeFilter]: a } }));
+  const [editingArea, setEditingArea] = useState(null); // index, or "new"
+  /* Service areas are per office: each circle can add a base fare on top of this price for pick-ups inside it. */
+  const areas = serviceAreasFor(draft, officeFilter);
+  const setAreas = (list) => setDraft((prev) => ({ ...prev, serviceAreas: { ...(prev.serviceAreas ?? {}), [officeFilter]: list } }));
+  const patchArea = (i, p) => setAreas(areas.map((a, j) => (j === i ? { ...a, ...p } : a)));
+  const removeArea = (i) => setAreas(areas.filter((_, j) => j !== i));
   const patch = (p) => setDraft((prev) => ({ ...prev, ...p }));
   const numOrNull = (v) => { const d = v.replace(/[^0-9]/g,""); return d === "" ? null : parseInt(d,10); };
   const num = fieldBox + " tabular-nums";
@@ -2573,29 +2583,53 @@ function CustomizedPriceModal({ row, officeFilter, vehicleLineup, onClose, onSav
         </div>
       </Field>
       <div className="flex items-center justify-between"><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Available</p><Toggle available={draft.available} onToggle={() => patch({ available: !draft.available })} /></div>
-      <Field label={`Service Area · ${officeFilter}`}>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setEditingArea(true)}
-            className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
-            <span className="flex min-w-0 items-center gap-2">
-              <IconMapPin size={14} className={area ? "shrink-0 text-emerald-500" : "shrink-0 text-gray-300"} />
-              <span className="truncate">{area ? `${area.name || "Service area"} · ≤${area.radiusKm} km` : "Not set — applies to every pick-up in this office"}</span>
-            </span>
-            <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>{area ? "Edit" : "Set area"}</span>
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <p className={fieldLabel} style={{ color: "var(--text-3)" }}>Service Areas · {officeFilter}</p>
+          <button type="button" onClick={() => setEditingArea("new")}
+            className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-black/5" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+            <IconPlus size={12} />Add area
           </button>
-          {area && (
-            <button type="button" title="Remove service area" onClick={() => setArea(null)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-red-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={15} /></button>
-          )}
         </div>
-      </Field>
-      {editingArea && (
+        {areas.length === 0 ? (
+          <p className="rounded-lg border border-dashed px-3 py-2.5 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>No areas — this price applies to every pick-up in this office.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_150px_36px] gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
+              <span>Area</span><span>Additional Base Fare ¥</span><span />
+            </div>
+            {areas.map((a, i) => (
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_150px_36px] items-center gap-2">
+                <button type="button" onClick={() => setEditingArea(i)}
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-gray-400" style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <IconMapPin size={14} className="shrink-0 text-emerald-500" />
+                    <span className="truncate">{`${a.name || `Area ${i + 1}`} · ≤${a.radiusKm} km`}</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--text-3)" }}>Edit</span>
+                </button>
+                <input type="text" inputMode="numeric" value={a.additionalFare ?? ""} onChange={(e) => patchArea(i, { additionalFare: numOrNull(e.target.value) })} placeholder="0"
+                  className={num} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} />
+                <button type="button" title="Remove area" onClick={() => removeArea(i)} className="flex h-9 w-9 items-center justify-center rounded-lg text-red-400 transition hover:bg-red-50 hover:text-red-600"><IconTrash size={15} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {editingArea !== null && (
         <RangeEditorModal title="Service Area" subtitle={`${draft.vehicleName} · ${officeFilter} office · applies to this price only`}
           nameLabel="Area Name" saveLabel="Set area" deleteLabel="Remove area"
           defaultCenter={OFFICE_CENTER_LOCATIONS[officeFilter]}
-          range={area ?? { name: `${officeFilter} service area`, radiusKm: 30, center: null }}
-          onClose={() => setEditingArea(false)}
-          onSave={(updated) => { setArea(updated); setEditingArea(false); }}
-          onDelete={area ? () => { setArea(null); setEditingArea(false); } : undefined} />
+          range={editingArea === "new"
+            ? { name: `${officeFilter} area ${areas.length + 1}`, radiusKm: (areas[areas.length - 1]?.radiusKm ?? 15) + 15, center: null }
+            : areas[editingArea]}
+          onClose={() => setEditingArea(null)}
+          onSave={(updated) => {
+            if (editingArea === "new") setAreas([...areas, { ...updated, additionalFare: 0 }]);
+            else patchArea(editingArea, updated);
+            setEditingArea(null);
+          }}
+          onDelete={editingArea === "new" ? undefined : () => { removeArea(editingArea); setEditingArea(null); }} />
       )}
       <Field label="Min. Fare (hrs)"><input type="text" inputMode="numeric" value={draft.minDurationHrs ?? ""} onChange={(e) => patch({ minDurationHrs: numOrNull(e.target.value) })} placeholder="0" className={`${num} max-w-[110px]`} style={{ borderColor: "var(--border)", background: "var(--bg-card)", color: "var(--text-1)" }} /></Field>
       <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: "var(--border-soft)" }}><p className={fieldLabel} style={{ color: "var(--text-3)" }}>Tiered Pricing</p><Toggle available={draft.tieredPricing !== false} onToggle={() => patch({ tieredPricing: !(draft.tieredPricing !== false) })} /></div>
